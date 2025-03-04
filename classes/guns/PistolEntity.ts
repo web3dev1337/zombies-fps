@@ -10,6 +10,8 @@ export default class PistolEntity extends GunEntity {
       ammo: options.ammo ?? 10,
       damage: options.damage ?? 3,
       fireRate: options.fireRate ?? 9,
+      // Use the same model for first-person view but with different positioning
+      firstPersonModelUri: options.firstPersonModelUri ?? 'models/items/pistol.glb',
       hand: options.hand ?? 'right',
       iconImageUri: options.iconImageUri ?? 'icons/pistol.png',
       idleAnimation: options.idleAnimation ?? 'idle_gun_right',
@@ -23,6 +25,8 @@ export default class PistolEntity extends GunEntity {
       reloadTimeMs: options.reloadTimeMs ?? 1250,
       shootAnimation: options.shootAnimation ?? 'shoot_gun_right',
       shootAudioUri: options.shootAudioUri ?? 'audio/sfx/pistol-shoot.mp3',
+      // Position the first-person view model in front of the camera
+      viewModelOffset: options.viewModelOffset ?? { x: 0.3, y: -0.3, z: -0.5 },
     });
   }
 
@@ -45,6 +49,36 @@ export default class PistolEntity extends GunEntity {
 
     // play shoot animation
     parentPlayerEntity.startModelOneshotAnimations([ 'shoot_gun_right' ]);
+    
+    // Add recoil effect for first-person view model
+    this._applyRecoilEffect();
+  }
+  
+  /**
+   * Applies a recoil effect to the first-person view model
+   * for more realistic shooting feedback
+   */
+  private _applyRecoilEffect() {
+    if (!this._firstPersonViewEntity || !this.isSpawned || !this.world) {
+      return;
+    }
+    
+    // Get base position
+    const basePosition = this._viewModelOffset || { x: 0.3, y: -0.3, z: -0.5 };
+    
+    // Apply recoil - move the gun back and up slightly
+    this._firstPersonViewEntity.setPosition({
+      x: basePosition.x,
+      y: basePosition.y + 0.05, // Move up slightly
+      z: basePosition.z + 0.1,  // Move back
+    });
+    
+    // Return to original position after a short delay
+    setTimeout(() => {
+      if (this._firstPersonViewEntity?.isSpawned) {
+        this._firstPersonViewEntity.setPosition(basePosition);
+      }
+    }, 100);
   }
 
   public override getMuzzleFlashPositionRotation(): { position: Vector3Like, rotation: QuaternionLike } {
@@ -54,4 +88,3 @@ export default class PistolEntity extends GunEntity {
     };
   }
 }
-

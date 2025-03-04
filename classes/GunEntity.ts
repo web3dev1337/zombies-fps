@@ -3,12 +3,16 @@ import {
   CollisionGroup,
   CollisionGroupsBuilder,
   Entity,
-  EntityOptions,
+  EntityEvent,
   PlayerEntity,
-  Vector3Like,
-  QuaternionLike,
   World,
   PlayerEntityController,
+} from 'hytopia';
+
+import type {
+  EntityOptions,
+  Vector3Like,
+  QuaternionLike,
 } from 'hytopia';
 
 import EnemyEntity from './EnemyEntity';
@@ -17,19 +21,21 @@ import type GamePlayerEntity from './GamePlayerEntity';
 export type GunHand = 'left' | 'right' | 'both';
 
 export interface GunEntityOptions extends EntityOptions {
-  ammo: number;              // The amount of ammo in the clip.
-  damage: number;            // The damage of the gun.
-  fireRate: number;          // Bullets shot per second.
-  hand: GunHand;             // The hand the weapon is held in.
-  iconImageUri: string;      // The image uri of the weapon icon.
-  idleAnimation: string;     // The animation played when the gun is idle.
-  maxAmmo: number;           // The amount of ammo the clip can hold.
-  parent?: GamePlayerEntity; // The parent player entity.
-  range: number;             // The max range bullets travel for raycast hits
-  reloadAudioUri: string;    // The audio played when reloading
-  reloadTimeMs: number;      // Seconds to reload.
-  shootAnimation: string;    // The animation played when the gun is shooting.
-  shootAudioUri: string;     // The audio played when shooting
+  ammo: number;                    // The amount of ammo in the clip.
+  damage: number;                  // The damage of the gun.
+  fireRate: number;                // Bullets shot per second.
+  firstPersonModelUri?: string;    // The model URI for first-person view (if different from third-person)
+  hand: GunHand;                   // The hand the weapon is held in.
+  iconImageUri: string;            // The image uri of the weapon icon.
+  idleAnimation: string;           // The animation played when the gun is idle.
+  maxAmmo: number;                 // The amount of ammo the clip can hold.
+  parent?: GamePlayerEntity;       // The parent player entity.
+  range: number;                   // The max range bullets travel for raycast hits
+  reloadAudioUri: string;          // The audio played when reloading
+  reloadTimeMs: number;            // Seconds to reload.
+  shootAnimation: string;          // The animation played when the gun is shooting.
+  shootAudioUri: string;           // The audio played when shooting
+  viewModelOffset?: Vector3Like;   // Offset for the first-person view model
 }
 
 export default abstract class GunEntity extends Entity {
@@ -44,10 +50,13 @@ export default abstract class GunEntity extends Entity {
   public reloadTimeMs: number;
   public shootAnimation: string;
   private _lastFireTime: number = 0;
-  private _muzzleFlashChildEntity: Entity | undefined;
-  private _reloadAudio: Audio;
   private _reloading: boolean = false;
-  private _shootAudio: Audio;
+  protected _firstPersonModelUri: string | undefined;
+  protected _firstPersonViewEntity: Entity | undefined;
+  protected _muzzleFlashChildEntity: Entity | undefined;
+  protected _reloadAudio: Audio;
+  protected _shootAudio: Audio;
+  protected _viewModelOffset: Vector3Like | undefined;
 
   public constructor(options: GunEntityOptions) {
     super({
@@ -66,6 +75,10 @@ export default abstract class GunEntity extends Entity {
     this.range = options.range;
     this.reloadTimeMs = options.reloadTimeMs;
     this.shootAnimation = options.shootAnimation;
+    
+    // Store first-person view model properties
+    this._firstPersonModelUri = options.firstPersonModelUri;
+    this._viewModelOffset = options.viewModelOffset;
 
     // Create reusable audio instances
     this._reloadAudio = new Audio({
@@ -90,8 +103,88 @@ export default abstract class GunEntity extends Entity {
   public override spawn(world: World, position: Vector3Like, rotation: QuaternionLike) {
     super.spawn(world, position, rotation);
     this.createMuzzleFlashChildEntity();
+    this.createFirstPersonViewModel();
     this._updatePlayerUIAmmo();
     this._updatePlayerUIWeapon();
+    
+    // Start weapon sway animation
+    if (this.parent) {
+      this._startWeaponSway();
+    }
+  }
+  
+  /**
+   * Creates a first-person view model if a firstPersonModelUri is provided
+   */
+  public createFirstPersonViewModel() {
+    if (!this.isSpawned || !this.world || !this._firstPersonModelUri || !this.parent) {
+      return;
+    }
+    
+    const parentPlayerEntity = this.parent as GamePlayerEntity;
+    
+    // Create first-person view model entity
+    this._firstPersonViewEntity = new Entity({
+      parent: parentPlayerEntity,
+      modelUri: this._firstPersonModelUri,
+      modelScale: this.modelScale,
+      // Attach to camera
+      parentNodeName: 'camera',
+    });
+    
+    // Calculate position based on view model offset or default
+    const viewModelPosition = this._viewModelOffset || { x: 0.3, y: -0.3, z: -0.5 };
+    
+    // Spawn the first-person view model
+    this._firstPersonViewEntity.spawn(this.world, viewModelPosition);
+    
+    // Make the original gun model invisible to the player
+    // Use setOpacity for the player's view only
+    this.setOpacity(0);
+  }
+  
+  /**
+   * Starts weapon sway animation for more realistic first-person view
+   */
+  private _startWeaponSway() {
+    if (!this._firstPersonViewEntity || !this.parent) {
+      return;
+    }
+    
+    const parentPlayerEntity = this.parent as GamePlayerEntity;
+    
+    // Add tick event listener to update weapon position based on movement
+    this.on(EntityEvent.TICK, (payload) => {
+      if (!this._firstPersonViewEntity?.isSpawned) {
+        return;
+      }
+      
+      // Get player input and movement
+      const input = parentPlayerEntity.player.input;
+      const isMoving = input.w || input.a || input.s || input.d;
+      const isSprinting = input.shift;
+      
+      // Calculate sway amount based on movement
+      const swayAmount = isMoving ? (isSprinting ? 0.01 : 0.005) : 0.002;
+      const swaySpeed = isMoving ? (isSprinting ? 5 : 3) : 1;
+      
+      // Calculate sway offsets using sine waves for natural movement
+      const time = performance.now() / 1000;
+      const horizontalSway = Math.sin(time * swaySpeed) * swayAmount;
+      const verticalSway = Math.cos(time * swaySpeed * 2) * swayAmount / 2;
+      
+      // Get base position
+      const basePosition = this._viewModelOffset || { x: 0.3, y: -0.3, z: -0.5 };
+      
+      // Apply sway to weapon position
+      if (this._firstPersonViewEntity.isSpawned) {
+        this._firstPersonViewEntity.setPosition({
+          x: basePosition.x + horizontalSway,
+          y: basePosition.y + verticalSway,
+          z: basePosition.z,
+        });
+      }
+    });
   }
 
   public createMuzzleFlashChildEntity() {
