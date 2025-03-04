@@ -18,6 +18,17 @@
 <div class="hit-text">HEADSHOT!</div>
 <div class="kill-text">KILL!</div>
 <div class="wave-announcement">Wave <span class="wave-number"></span></div>
+
+<!-- Combo system UI -->
+<div class="combo-counter">
+  <div class="combo-multiplier">x<span class="combo-multiplier-value">1.0</span></div>
+  <div class="combo-kills"><span class="combo-kills-value">0</span> KILLS</div>
+  <div class="combo-bar">
+    <div class="combo-bar-fill"></div>
+    <div class="combo-bar-timer"></div>
+  </div>
+</div>
+
 <div class="killstreak-counter">
   <span class="killstreak-number">0</span>
   <span class="killstreak-label">KILL STREAK</span>
@@ -166,6 +177,50 @@
     // Track kill streak
     let killStreak = 0;
     let killStreakTimeout;
+    
+    // Handle combo system updates
+    if (type === 'combo') {
+      const { level, kills } = data;
+      const comboCounter = document.querySelector('.combo-counter');
+      const multiplierValue = document.querySelector('.combo-multiplier-value');
+      const killsValue = document.querySelector('.combo-kills-value');
+      const comboBar = document.querySelector('.combo-bar');
+      const comboBarTimer = document.querySelector('.combo-bar-timer');
+      
+      // Update values
+      multiplierValue.textContent = (1 + (level * 0.2)).toFixed(1);
+      killsValue.textContent = kills;
+      
+      // Show/hide combo counter based on level
+      if (level > 0) {
+        comboCounter.classList.add('active');
+        
+        // Reset and restart the timer animation
+        comboBar.classList.remove('active');
+        void comboBar.offsetWidth; // Force reflow
+        comboBar.classList.add('active');
+        
+        // Set color based on level
+        const colors = [
+          '#44ff44', // Green
+          '#88ff44',
+          '#ccff44',
+          '#ffff44',
+          '#ffcc44',
+          '#ff8844',
+          '#ff4444', // Red
+          '#ff44ff', // Purple
+          '#4444ff', // Blue
+          '#ffffff'  // White
+        ];
+        
+        const color = colors[Math.min(level, colors.length - 1)];
+        multiplierValue.style.color = color;
+        multiplierValue.style.textShadow = `0 0 10px ${color}88`;
+      } else {
+        comboCounter.classList.remove('active');
+      }
+    }
     
     // Handle hit feedback (headshot, critical, critical_headshot)
     if (type === 'headshot' || type === 'critical' || type === 'critical_headshot') {
@@ -818,6 +873,80 @@
     animation: textPulse 1.5s ease-out forwards;
   }
   
+  /* Combo system styles */
+  .combo-counter {
+    position: fixed;
+    top: 100px;
+    left: 20px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 5px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    width: 150px;
+  }
+  
+  .combo-counter.active {
+    opacity: 1;
+    transform: scale(1);
+  }
+  
+  .combo-multiplier {
+    font-family: "Creepster", serif;
+    font-size: 36px;
+    color: #ffcc00;
+    text-shadow: 0 0 10px rgba(255, 204, 0, 0.8);
+    margin-bottom: 5px;
+  }
+  
+  .combo-kills {
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  
+  .combo-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .combo-bar-fill {
+    height: 100%;
+    background: linear-gradient(to right, #ffcc00, #ff6600);
+    width: 100%;
+    transform-origin: left;
+    transform: scaleX(0);
+    transition: transform 0.1s linear;
+  }
+  
+  .combo-bar-timer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.5);
+    transform-origin: right;
+    transform: scaleX(0);
+    transition: transform 5s linear;
+  }
+  
+  .combo-bar.active .combo-bar-timer {
+    transform: scaleX(1);
+  }
+  
+  /* Kill streak counter styles */
   .killstreak-counter {
     position: fixed;
     top: 100px;

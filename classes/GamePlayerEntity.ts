@@ -2,21 +2,24 @@ import {
   Audio,
   BaseEntityControllerEvent,
   CollisionGroup,
-  EventPayloads,
   Light,
   LightType,
   Player,
-  PlayerCameraOrientation,
   PlayerEntity,
   PlayerCameraMode,
-  PlayerInput,
   SceneUI,
-  Vector3Like,
-  QuaternionLike,
   World,
   Quaternion,
   PlayerEntityController,
   Vector3,
+} from 'hytopia';
+
+import type {
+  EventPayloads,
+  PlayerCameraOrientation,
+  PlayerInput,
+  Vector3Like,
+  QuaternionLike,
 } from 'hytopia';
 
 import PistolEntity from './guns/PistolEntity';
@@ -31,17 +34,28 @@ const REVIVE_REQUIRED_HEALTH = 50;
 const REVIVE_PROGRESS_INTERVAL_MS = 1000;
 const REVIVE_DISTANCE_THRESHOLD = 3;
 
+// Combo system constants
+const COMBO_TIMEOUT_MS = 5000; // Time window for combo
+const COMBO_REWARD_MULTIPLIER = 0.2; // Each combo level adds 20% more reward
+const MAX_COMBO_LEVEL = 10; // Maximum combo level
+
 export default class GamePlayerEntity extends PlayerEntity {
   public health: number;
   public maxHealth: number;
   public money: number;
   public downed = false;
+  
+  // Combo system properties
+  public comboLevel: number = 0;
+  public comboKills: number = 0;
+  public comboTimeoutId: number | null = null;
+  
   private _damageAudio: Audio;
   private _downedSceneUI: SceneUI;
   private _purchaseAudio: Audio;
   private _gun: GunEntity | undefined;
   private _light: Light;
-  private _reviveInterval: NodeJS.Timeout | undefined;
+  private _reviveInterval: number | undefined;
   private _reviveDistanceVectorA: Vector3;
   private _reviveDistanceVectorB: Vector3;
 
@@ -146,9 +160,114 @@ export default class GamePlayerEntity extends PlayerEntity {
     this._updatePlayerUIMoney();
   }
 
-  public addMoney(amount: number) {
-    this.money += amount;
+  /**
+   * Add money to the player's balance with combo multiplier
+   * @param amount Base amount of money to add
+   * @param isKill Whether this money is from a kill (for combo tracking)
+   */
+  public addMoney(amount: number, isKill: boolean = false) {
+    // Apply combo multiplier if applicable
+    let finalAmount = amount;
+    if (this.comboLevel > 0) {
+      finalAmount *= (1 + (this.comboLevel * COMBO_REWARD_MULTIPLIER));
+    }
+    
+    this.money += finalAmount;
     this._updatePlayerUIMoney();
+    
+    // Update combo if this is from a kill
+    if (isKill) {
+      this._updateCombo();
+    }
+  }
+  
+  /**
+   * Update the player's combo counter
+   */
+  private _updateCombo() {
+    // Clear existing timeout
+    if (this.comboTimeoutId !== null) {
+      window.clearTimeout(this.comboTimeoutId);
+    }
+    
+    // Increment combo
+    this.comboKills++;
+    this.comboLevel = Math.min(Math.floor(this.comboKills / 2), MAX_COMBO_LEVEL);
+    
+    // Update UI
+    this._updateComboUI();
+    
+    // Set timeout to reset combo
+    this.comboTimeoutId = window.setTimeout(() => {
+      this.comboKills = 0;
+      this.comboLevel = 0;
+      this._updateComboUI();
+      this.comboTimeoutId = null;
+    }, COMBO_TIMEOUT_MS) as unknown as number;
+  }
+  
+  /**
+   * Update the combo UI
+   */
+  private _updateComboUI() {
+    if (!this.world) return;
+    
+    this.player.ui.sendData({
+      type: 'combo',
+      level: this.comboLevel,
+      kills: this.comboKills
+    });
+    
+    // Show combo message for level ups
+    if (this.comboLevel >= 1) {
+      const comboName = this._getComboName();
+      this.world.chatManager.sendPlayerMessage(
+        this.player,
+        `${comboName}! (${this.comboKills} kills, ${Math.round(this.comboLevel * COMBO_REWARD_MULTIPLIER * 100)}% bonus)`,
+        this._getComboColor()
+      );
+    }
+  }
+  
+  /**
+   * Get a name for the current combo level
+   */
+  private _getComboName(): string {
+    const comboNames = [
+      "COMBO",
+      "NICE COMBO",
+      "GREAT COMBO",
+      "AWESOME",
+      "UNSTOPPABLE",
+      "GODLIKE",
+      "LEGENDARY",
+      "INHUMAN",
+      "IMPOSSIBLE",
+      "BEYOND REALITY"
+    ];
+    
+    return comboNames[Math.min(this.comboLevel, comboNames.length - 1)];
+  }
+  
+  /**
+   * Get a color for the current combo level
+   */
+  private _getComboColor(): string {
+    // Colors from green to red as combo increases
+    const colors = [
+      "44FF44", // Green
+      "88FF44",
+      "CCFF44",
+      "FFFF44",
+      "FFCC44",
+      "FF8844",
+      "FF4444", // Red
+      "FF44FF", // Purple
+      "4444FF", // Blue
+      "FFFFFF"  // White
+    ];
+    
+    return colors[Math.min(this.comboLevel, colors.length - 1)];
   }
 
   public equipGun(gun: GunEntity) {
@@ -205,9 +324,12 @@ export default class GamePlayerEntity extends PlayerEntity {
       return;
     }
 
-    clearTimeout(this._reviveInterval);
+    if (this._reviveInterval) {
+      clearTimeout(this._reviveInterval);
+    }
 
-    this._reviveInterval = setTimeout(() => {
+    // Use window.setTimeout to get a number return type
+    this._reviveInterval = window.setTimeout(() => {
       this._reviveDistanceVectorA.set([ this.position.x, this.position.y, this.position.z ]);
       this._reviveDistanceVectorB.set([ byPlayer.position.x, byPlayer.position.y, byPlayer.position.z ]);
       const distance = this._reviveDistanceVectorA.distance(this._reviveDistanceVectorB);
@@ -228,7 +350,7 @@ export default class GamePlayerEntity extends PlayerEntity {
       } else {
         this.progressRevive(byPlayer);
       }
-    }, REVIVE_PROGRESS_INTERVAL_MS);
+    }, REVIVE_PROGRESS_INTERVAL_MS) as unknown as number;
   }
 
   private _onTickWithPlayerInput = (payload: EventPayloads[BaseEntityControllerEvent.TICK_WITH_PLAYER_INPUT]) => {
@@ -334,7 +456,7 @@ export default class GamePlayerEntity extends PlayerEntity {
   }
 
   private _autoHealTicker() {
-    setTimeout(() => {
+    window.setTimeout(() => {
       if (!this.isSpawned) {
         return;
       }
@@ -348,4 +470,3 @@ export default class GamePlayerEntity extends PlayerEntity {
     }, 1000);
   }
 }
-

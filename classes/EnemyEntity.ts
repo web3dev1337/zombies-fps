@@ -249,13 +249,34 @@ export default class EnemyEntity extends Entity {
       if (fromPlayer) {
         // Bonus for kill
         const killBonus = this.reward * 0.5;
-        fromPlayer.addMoney(killBonus);
+        fromPlayer.addMoney(killBonus, true); // Mark as kill for combo tracking
         
         // Notify of kill
         fromPlayer.player.ui.sendData({ 
           type: 'kill',
           reward: killBonus
         });
+        
+        // Apply special effects based on combo level
+        if (fromPlayer.comboLevel >= 3) {
+          // Stronger screen shake for higher combos
+          const intensity = 0.1 + (fromPlayer.comboLevel * 0.05);
+          fromPlayer.player.ui.sendData({
+            type: 'screen_shake',
+            intensity: Math.min(intensity, 0.5), // Cap at 0.5
+            duration: 300
+          });
+          
+          // Special death effect for high combos
+          if (fromPlayer.comboLevel >= 5) {
+            this.setTintColor({ r: 255, g: 255, b: 0 }); // Yellow flash
+            setTimeout(() => {
+              if (this.isSpawned) {
+                this.setTintColor({ r: 255, g: 255, b: 255 });
+              }
+            }, 50);
+          }
+        }
       }
       
       this.despawn();
