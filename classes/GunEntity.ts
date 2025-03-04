@@ -273,7 +273,7 @@ export default abstract class GunEntity extends Entity {
     // Determine the actual length of the tracer based on hit point or max range
     const actualLength = raycastHit ? raycastHit.hitDistance : length;
 
-    // Calculate the end point for positioning
+    // Calculate the end point
     const endPoint = new Vector3(
       actualOrigin.x + (direction.x * actualLength),
       actualOrigin.y + (direction.y * actualLength),
@@ -283,36 +283,85 @@ export default abstract class GunEntity extends Entity {
     // Create new tracer entity
     this._bulletTracerEntity = new Entity({
       modelUri: 'models/projectiles/bullet-trace.gltf',
-      modelScale: 0.2,  // Make it thicker
-      opacity: 1,
-      parent: this,     // Attach to gun so it moves with it
+      modelScale: 5.0,  // Increased scale for better visibility
+      opacity: 1.0
     });
 
-    // Calculate rotation to point from origin to end point
-    const dx = endPoint.x - actualOrigin.x;
-    const dy = endPoint.y - actualOrigin.y;
-    const dz = endPoint.z - actualOrigin.z;
+    // Log for debugging
+    console.log('Creating bullet tracer:', {
+      origin: actualOrigin,
+      direction,
+      length: actualLength,
+      hitPoint: endPoint,
+    });
 
+    // Calculate rotation to point in direction of travel
     const rotationQuat = Quaternion.fromEuler(
-      Math.atan2(-dy, Math.sqrt(dx * dx + dz * dz)) * (180 / Math.PI),
-      Math.atan2(dx, dz) * (180 / Math.PI),
+      Math.atan2(-direction.y, Math.sqrt(direction.x * direction.x + direction.z * direction.z)) * (180 / Math.PI),
+      Math.atan2(direction.x, direction.z) * (180 / Math.PI),
       0
     );
 
-    // Spawn at muzzle position
-    this._bulletTracerEntity.spawn(this.world, muzzlePosition, rotationQuat);
+    // Spawn at start position
+    this._bulletTracerEntity.spawn(this.world, actualOrigin, rotationQuat);
 
-    // Fade out and despawn with longer visibility
-    setTimeout(() => {
+    // Log after spawn
+    console.log('Bullet tracer spawned:', {
+      position: this._bulletTracerEntity.position,
+      rotation: rotationQuat,
+      isSpawned: this._bulletTracerEntity.isSpawned
+    });
+
+    // Animate the tracer from start to end
+    const BULLET_SPEED = 1; // Slower speed for better visibility
+    const travelTime = (actualLength / BULLET_SPEED) * 1000; // Convert to milliseconds
+    const startTime = Date.now();
+
+    // Use setInterval for animation
+    const animationInterval = setInterval(() => {
+      const currentTime = Date.now();
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / travelTime, 1);
+
       if (this._bulletTracerEntity?.isSpawned) {
-        this._bulletTracerEntity.setOpacity(0);
-        setTimeout(() => {
-          if (this._bulletTracerEntity?.isSpawned) {
-            this._bulletTracerEntity.despawn();
-          }
-        }, 50);
+        // Interpolate position
+        const currentPos = new Vector3(
+          actualOrigin.x + (direction.x * actualLength * progress),
+          actualOrigin.y + (direction.y * actualLength * progress),
+          actualOrigin.z + (direction.z * actualLength * progress)
+        );
+        
+        this._bulletTracerEntity.setPosition(currentPos);
+
+        // Log position updates for first few frames
+        if (progress <= 0.1) {
+          console.log('Tracer position:', {
+            progress,
+            position: currentPos
+          });
+        }
+
+        if (progress >= 1) {
+          // End of animation, clear interval
+          clearInterval(animationInterval);
+          
+          // Keep it visible longer before cleanup
+          setTimeout(() => {
+            if (this._bulletTracerEntity?.isSpawned) {
+              this._bulletTracerEntity.setOpacity(0);
+              setTimeout(() => {
+                if (this._bulletTracerEntity?.isSpawned) {
+                  this._bulletTracerEntity.despawn();
+                }
+              }, 250); // Longer fade-out time
+            }
+          }, 500); // Longer visible time
+        }
+      } else {
+        // If entity is no longer spawned, clear the interval
+        clearInterval(animationInterval);
       }
-    }, 100);
+    }, 1000 / 60); // 60 FPS update rate
   }
 
   private _updatePlayerUIAmmo() {
