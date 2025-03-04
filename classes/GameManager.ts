@@ -13,7 +13,7 @@ import type { Player } from 'hytopia';
 const GAME_WAVE_INTERVAL_MS = 30 * 1000; // 30 seconds between waves
 const SLOWEST_SPAWN_INTERVAL_MS = 4000; // Starting spawn rate
 const FASTEST_SPAWN_INTERVAL_MS = 750; // Fastest spawn rate
-const GAME_START_COUNTDOWN_S = 45; // 45 seconds delay before game starts
+const GAME_START_COUNTDOWN_S = 5; // 5 seconds delay before game starts
 const WAVE_SPAWN_INTERVAL_REDUCTION_MS = 300; // Spawn rate reduction per wave
 const WAVE_DELAY_MS = 10000; // 10s between waves
 
