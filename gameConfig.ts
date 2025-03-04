@@ -206,12 +206,12 @@ export const WEAPON_CRATES = [
 
 export const WALL_WEAPONS = [
   {
-    name: 'Wall Pistol',
+    name: 'Wall AR-15',
     position: { x: -5, y: 1.5, z: 20 },
     rotation: Quaternion.fromEuler(0, 90, 0),
-    price: 500,
+    price: 5,
     weaponClass: PistolEntity,
-    modelUri: 'models/items/pistol.glb',
+    modelUri: 'models/items/ar-15.glb',
     displayOffset: { x: 0, y: 0.5, z: 0.3 },
     displayRotation: Quaternion.fromEuler(-90, 0, 0),
   },
