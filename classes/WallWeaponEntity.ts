@@ -86,9 +86,8 @@ export default class WallWeaponEntity extends InteractableEntity {
       return;
     }
 
-    // Create and equip the weapon
-    const weapon = new this._weaponClass({});
-    interactingPlayer.equipGun(weapon);
+    // Create and equip the weapon with parent set
+    interactingPlayer.equipGun(new this._weaponClass({ parent: interactingPlayer }));
 
     // Play purchase sound
     const purchaseSound = new Audio({
