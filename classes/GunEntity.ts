@@ -3,12 +3,17 @@ import {
   CollisionGroup,
   CollisionGroupsBuilder,
   Entity,
-  EntityOptions,
   PlayerEntity,
-  Vector3Like,
-  QuaternionLike,
   World,
   PlayerEntityController,
+  Quaternion,
+  Vector3,
+} from 'hytopia';
+
+import type {
+  EntityOptions,
+  Vector3Like,
+  QuaternionLike,
 } from 'hytopia';
 
 import EnemyEntity from './EnemyEntity';
@@ -48,6 +53,7 @@ export default abstract class GunEntity extends Entity {
   private _reloadAudio: Audio;
   private _reloading: boolean = false;
   private _shootAudio: Audio;
+  private _bulletTracerEntity: Entity | undefined;
 
   public constructor(options: GunEntityOptions) {
     super({
@@ -192,6 +198,9 @@ export default abstract class GunEntity extends Entity {
     const { origin, direction } = this.getShootOriginDirection();
     this.shootRaycast(origin, direction, this.range);
 
+    // Create bullet tracer
+    this.createBulletTracer(origin, direction, this.range);
+
     // Play shoot animation
     parentPlayerEntity.startModelOneshotAnimations([ this.shootAnimation ]);
 
@@ -231,6 +240,67 @@ export default abstract class GunEntity extends Entity {
     if (hitEntity && hitEntity instanceof EnemyEntity) {
       hitEntity.takeDamage(this.damage, parentPlayerEntity);
     }
+  }
+
+  private createBulletTracer(origin: Vector3Like, direction: Vector3Like, length: number) {
+    if (!this.world || !this.parent) {
+      return;
+    }
+
+    // Clean up previous tracer if it exists
+    if (this._bulletTracerEntity?.isSpawned) {
+      this._bulletTracerEntity.despawn();
+    }
+
+    // Calculate the end point of the raycast
+    const raycastHit = this.world.simulation.raycast(origin, direction, length, {
+      filterGroups: CollisionGroupsBuilder.buildRawCollisionGroups({
+        belongsTo: [CollisionGroup.ALL],
+        collidesWith: [CollisionGroup.BLOCK, CollisionGroup.ENTITY],
+      }),
+    });
+
+    // Determine the actual length of the tracer based on hit point or max range
+    const actualLength = raycastHit ? raycastHit.hitDistance : length;
+
+    // Create new tracer entity
+    this._bulletTracerEntity = new Entity({
+      modelUri: 'models/projectiles/bullet-trace.gltf',
+      // Scale the tracer to match the actual shot length
+      // The model is 3.5 units long by default (based on the model bounds)
+      modelScale: 0.1 * (actualLength / 3.5),
+      opacity: 1,
+    });
+
+    // Calculate rotation to point in direction of shot
+    const rotationQuat = Quaternion.fromEuler(
+      Math.atan2(-direction.y, Math.sqrt(direction.x * direction.x + direction.z * direction.z)) * (180 / Math.PI),
+      Math.atan2(direction.x, direction.z) * (180 / Math.PI),
+      0
+    );
+    
+    // Position the tracer at the midpoint between origin and hit point
+    // This works because the model is centered
+    const midPoint = new Vector3(
+      origin.x + (direction.x * actualLength * 0.5),
+      origin.y + (direction.y * actualLength * 0.5),
+      origin.z + (direction.z * actualLength * 0.5)
+    );
+
+    // Spawn the tracer
+    this._bulletTracerEntity.spawn(this.world, midPoint, rotationQuat);
+
+    // Fade out and despawn after a short delay
+    setTimeout(() => {
+      if (this._bulletTracerEntity?.isSpawned) {
+        this._bulletTracerEntity.setOpacity(0);
+        setTimeout(() => {
+          if (this._bulletTracerEntity?.isSpawned) {
+            this._bulletTracerEntity.despawn();
+          }
+        }, 50);
+      }
+    }, 100);
   }
 
   private _updatePlayerUIAmmo() {
