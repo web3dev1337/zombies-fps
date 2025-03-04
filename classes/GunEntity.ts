@@ -208,11 +208,42 @@ export default abstract class GunEntity extends Entity {
       }, 35);
     }
     
+    // Apply recoil effect
+    this._applyRecoilEffect();
+    
     // Update player ammo
     this._updatePlayerUIAmmo();
     
     // Play shoot audio
     this._shootAudio.play(this.parent.world, true);
+  }
+  
+  /**
+   * Apply a recoil effect when shooting
+   */
+  private _applyRecoilEffect() {
+    if (!this.isSpawned || !this.parent) return;
+    
+    // Get current position
+    const basePosition = { x: 0.2, y: -0.15, z: -0.3 };
+    
+    // Apply immediate recoil
+    this.setPosition({
+      x: basePosition.x,
+      y: basePosition.y + 0.02, // Slight upward movement
+      z: basePosition.z + 0.05  // Backward movement
+    });
+    
+    // Return to original position smoothly
+    setTimeout(() => {
+      if (!this.isSpawned) return;
+      
+      this.setPosition({
+        x: basePosition.x,
+        y: basePosition.y,
+        z: basePosition.z
+      });
+    }, 100);
   }
 
   public shootRaycast(origin: Vector3Like, direction: Vector3Like, length: number) {

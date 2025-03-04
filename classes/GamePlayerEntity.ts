@@ -87,10 +87,13 @@ export default class GamePlayerEntity extends PlayerEntity {
     // Setup UI
     this.player.ui.load('ui/index.html');
 
-    // Setup first person camera
+    // Setup enhanced first person camera
     this.player.camera.setMode(PlayerCameraMode.FIRST_PERSON);
     this.player.camera.setModelHiddenNodes([ 'head', 'neck', 'torso', 'leg_right', 'leg_left' ]);
-    this.player.camera.setOffset({ x: 0, y: 0.5, z: 0 });
+    this.player.camera.setOffset({ x: 0, y: 0.6, z: 0 }); // Slightly higher camera position
+    
+    // Set camera FOV for better first-person experience
+    this.player.camera.setFov(75); // Wider FOV for better peripheral vision
   
     // Set base stats
     this.health = BASE_HEALTH;
@@ -270,6 +273,9 @@ export default class GamePlayerEntity extends PlayerEntity {
     return colors[Math.min(this.comboLevel, colors.length - 1)];
   }
 
+  /**
+   * Equip a gun with improved first-person view positioning
+   */
   public equipGun(gun: GunEntity) {
     if (!this.world) {
       return;
@@ -286,7 +292,67 @@ export default class GamePlayerEntity extends PlayerEntity {
     }
 
     this._gun = gun;
-    this._gun.spawn(this.world, { x: 0, y: 0, z: -0.2 }, Quaternion.fromEuler(-90, 0, 0));
+    
+    // Improved weapon positioning for first-person view
+    // Position the gun slightly to the right and forward for a more natural look
+    this._gun.spawn(
+      this.world, 
+      { x: 0.2, y: -0.15, z: -0.3 }, // Positioned more naturally in view
+      Quaternion.fromEuler(-85, 10, 0) // Slight angle for better visibility
+    );
+    
+    // Apply a slight bobbing effect when moving
+    this._applyWeaponBobbing();
+  }
+  
+  /**
+   * Apply a subtle weapon bobbing effect for more immersive movement
+   */
+  private _applyWeaponBobbing() {
+    if (!this._gun || !this.world) return;
+    
+    // Track previous position to calculate movement
+    let prevX = this.position.x;
+    let prevZ = this.position.z;
+    
+    // Set up a ticker to update weapon position based on movement
+    const bobbingInterval = window.setInterval(() => {
+      if (!this.isSpawned || !this._gun || !this._gun.isSpawned) {
+        window.clearInterval(bobbingInterval);
+        return;
+      }
+      
+      // Calculate movement speed based on position change
+      const deltaX = this.position.x - prevX;
+      const deltaZ = this.position.z - prevZ;
+      const speed = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ) * 50; // Scale factor
+      
+      // Update previous position
+      prevX = this.position.x;
+      prevZ = this.position.z;
+      
+      // Only apply bobbing when moving
+      if (speed > 0.1) {
+        // Calculate bobbing based on time
+        const time = performance.now() / 1000;
+        const verticalBob = Math.sin(time * 5) * 0.01 * Math.min(speed, 1);
+        const horizontalBob = Math.cos(time * 2.5) * 0.005 * Math.min(speed, 1);
+        
+        // Apply bobbing to gun position
+        this._gun.setPosition({
+          x: 0.2 + horizontalBob,
+          y: -0.15 + verticalBob,
+          z: -0.3
+        });
+      } else {
+        // Reset to base position when not moving
+        this._gun.setPosition({
+          x: 0.2,
+          y: -0.15,
+          z: -0.3
+        });
+      }
+    }, 16); // ~60fps update
   }
 
   public spendMoney(amount: number): boolean {
