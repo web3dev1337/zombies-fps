@@ -30,9 +30,10 @@ export default class WallWeaponEntity extends InteractableEntity {
   public purchasePrice: number;
   private _purchaseSceneUI: SceneUI;
   private _weaponClass: new (options: Partial<GunEntityOptions>) => GunEntity;
-  private _weaponDisplay: Entity;
+  private _modelUri: string;
   private _displayOffset: Vector3Like;
   private _displayRotation?: QuaternionLike;
+  private _weaponDisplay?: Entity;
 
   public constructor(options: WallWeaponEntityOptions) {
     const colliderOptions = Collider.optionsFromModelUri(options.modelUri);
@@ -53,6 +54,7 @@ export default class WallWeaponEntity extends InteractableEntity {
 
     this.purchasePrice = options.price;
     this._weaponClass = options.weaponClass;
+    this._modelUri = options.modelUri;
     this._displayOffset = options.displayOffset ?? { x: 0, y: 0, z: 0 };
     this._displayRotation = options.displayRotation;
 
@@ -66,13 +68,6 @@ export default class WallWeaponEntity extends InteractableEntity {
         name: `${this.name} - ${options.name}`,
         cost: this.purchasePrice,
       },
-    });
-
-    // Create weapon display model
-    this._weaponDisplay = new Entity({
-      modelUri: options.modelUri,
-      modelScale: 1,
-      parent: this,
     });
   }
 
@@ -99,6 +94,13 @@ export default class WallWeaponEntity extends InteractableEntity {
     super.spawn(world, position, rotation);
     this._purchaseSceneUI.load(world);
     
+    // Create and spawn the weapon display after parent is spawned
+    this._weaponDisplay = new Entity({
+      modelUri: this._modelUri,
+      modelScale: 1,
+      parent: this,
+    });
+    
     // Spawn the weapon display with offset
     const displayPosition = {
       x: position.x + this._displayOffset.x,
@@ -106,5 +108,13 @@ export default class WallWeaponEntity extends InteractableEntity {
       z: position.z + this._displayOffset.z
     };
     this._weaponDisplay.spawn(world, displayPosition, this._displayRotation ?? rotation);
+  }
+
+  public override despawn(): void {
+    if (this._weaponDisplay) {
+      this._weaponDisplay.despawn();
+      this._weaponDisplay = undefined;
+    }
+    super.despawn();
   }
 } 
