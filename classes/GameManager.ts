@@ -1,10 +1,11 @@
 import { Audio, Collider, ColliderShape, CollisionGroup, GameServer } from 'hytopia';
 import GamePlayerEntity from './GamePlayerEntity';
 import PurchaseBarrierEntity from './PurchaseBarrierEntity';
-import { INVISIBLE_WALLS, INVISIBLE_WALL_COLLISION_GROUP, PURCHASE_BARRIERS, ENEMY_SPAWN_POINTS, WEAPON_CRATES } from '../gameConfig';
+import { INVISIBLE_WALLS, INVISIBLE_WALL_COLLISION_GROUP, PURCHASE_BARRIERS, ENEMY_SPAWN_POINTS, WEAPON_CRATES, WALL_WEAPONS } from '../gameConfig';
 import RipperEntity from './enemies/RipperEntity';
 import ZombieEntity from './enemies/ZombieEntity';
 import WeaponCrateEntity from './WeaponCrateEntity';
+import WallWeaponEntity from './WallWeaponEntity';
 import type { World, Vector3Like } from 'hytopia';
 import type EnemyEntity from './EnemyEntity';
 import type { Player } from 'hytopia';
@@ -12,7 +13,7 @@ import type { Player } from 'hytopia';
 const GAME_WAVE_INTERVAL_MS = 30 * 1000; // 30 seconds between waves
 const SLOWEST_SPAWN_INTERVAL_MS = 4000; // Starting spawn rate
 const FASTEST_SPAWN_INTERVAL_MS = 750; // Fastest spawn rate
-const GAME_START_COUNTDOWN_S = 45; // 45 seconds delay before game starts
+const GAME_START_COUNTDOWN_S = 5; // 5 seconds delay before game starts
 const WAVE_SPAWN_INTERVAL_REDUCTION_MS = 300; // Spawn rate reduction per wave
 const WAVE_DELAY_MS = 10000; // 10s between waves
 
@@ -25,11 +26,11 @@ export default class GameManager {
   public waveDelay = 0;
   public world: World | undefined;
 
-  private _enemySpawnTimeout: NodeJS.Timeout | undefined;
-  private _endGameTimeout: NodeJS.Timeout | undefined;
+  private _enemySpawnTimeout: any;
+  private _endGameTimeout: any;
   private _startCountdown: number = GAME_START_COUNTDOWN_S;
-  private _startInterval: NodeJS.Timeout | undefined;
-  private _waveTimeout: NodeJS.Timeout | undefined;
+  private _startInterval: any;
+  private _waveTimeout: any;
   private _waveStartAudio: Audio;
 
   public constructor() {
@@ -78,7 +79,7 @@ export default class GameManager {
       const wallCollider = new Collider({
         shape: ColliderShape.BLOCK,
         halfExtents: wall.halfExtents,
-        relativePosition: wall.position, // since this is not attached to a rigid body, relative position is relative to the world global coordinate space.
+        relativePosition: wall.position,
         collisionGroups: {
           belongsTo: [ INVISIBLE_WALL_COLLISION_GROUP ],
           collidesWith: [ CollisionGroup.PLAYER ],
@@ -100,6 +101,20 @@ export default class GameManager {
       });
 
       weaponCrate.spawn(world, crate.position, crate.rotation);
+    });
+
+    // Setup wall weapons
+    WALL_WEAPONS.forEach(weapon => {
+      const wallWeapon = new WallWeaponEntity({
+        name: weapon.name,
+        price: weapon.price,
+        weaponClass: weapon.weaponClass,
+        modelUri: weapon.modelUri,
+        displayOffset: weapon.displayOffset,
+        displayRotation: weapon.displayRotation,
+      });
+
+      wallWeapon.spawn(world, weapon.position, weapon.rotation);
     });
 
     // Start ambient music

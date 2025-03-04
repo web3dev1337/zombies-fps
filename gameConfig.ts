@@ -1,6 +1,14 @@
 import { CollisionGroup, Quaternion } from 'hytopia';
 import type { Vector3Like } from 'hytopia';
 
+// Import weapon classes
+import AK47Entity from './classes/guns/AK47Entity';
+import AR15Entity from './classes/guns/AR15Entity';
+import AutoPistolEntity from './classes/guns/AutoPistolEntity';
+import AutoShotgunEntity from './classes/guns/AutoShotgunEntity';
+import PistolEntity from './classes/guns/PistolEntity';
+import ShotgunEntity from './classes/guns/ShotgunEntity';
+
 export const INVISIBLE_WALL_COLLISION_GROUP = CollisionGroup.GROUP_1;
 
 export const INVISIBLE_WALLS = [
@@ -195,6 +203,49 @@ export const WEAPON_CRATES = [
     rollableWeaponIds: [ 'ak47', 'ar15', 'auto-pistol', 'auto-shotgun', ],
   },
 ]
+
+export const WALL_WEAPONS = [
+  {
+    name: 'Wall AR-15',
+    position: { x: -5, y: 1.5, z: 20 },
+    rotation: Quaternion.fromEuler(0, 90, 0),
+    price: 5,
+    weaponClass: AR15Entity,
+    modelUri: 'models/items/ar-15.glb',
+    displayOffset: { x: 0, y: 0.5, z: 0.3 },
+    displayRotation: Quaternion.fromEuler(-90, 0, 0),
+  },
+  {
+    name: 'Wall Shotgun',
+    position: { x: -12, y: 1.5, z: 8 },
+    rotation: Quaternion.fromEuler(0, 0, 0),
+    price: 1000,
+    weaponClass: ShotgunEntity,
+    modelUri: 'models/items/shotgun.glb',
+    displayOffset: { x: 0, y: 0.5, z: 0.3 },
+    displayRotation: Quaternion.fromEuler(-90, 0, 0),
+  },
+  {
+    name: 'Wall AR-15',
+    position: { x: 15, y: 1.5, z: 12 },
+    rotation: Quaternion.fromEuler(0, -90, 0),
+    price: 1500,
+    weaponClass: AR15Entity,
+    modelUri: 'models/items/ar-15.glb',
+    displayOffset: { x: 0, y: 0.5, z: 0.3 },
+    displayRotation: Quaternion.fromEuler(-90, 0, 0),
+  },
+  {
+    name: 'Wall AK-47',
+    position: { x: 28, y: 1.5, z: -8 },
+    rotation: Quaternion.fromEuler(0, 180, 0),
+    price: 2000,
+    weaponClass: AK47Entity,
+    modelUri: 'models/items/ak-47.glb',
+    displayOffset: { x: 0, y: 0.5, z: 0.3 },
+    displayRotation: Quaternion.fromEuler(-90, 0, 0),
+  },
+];
 
 export const ENEMY_SPAWN_POINTS: Record<string, Vector3Like[]> = {
   start: [
