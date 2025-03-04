@@ -252,8 +252,18 @@ export default abstract class GunEntity extends Entity {
       this._bulletTracerEntity.despawn();
     }
 
-    // Calculate the end point of the raycast
-    const raycastHit = this.world.simulation.raycast(origin, direction, length, {
+    // Get the muzzle position to start the tracer from
+    const { position: muzzlePosition } = this.getMuzzleFlashPositionRotation();
+    
+    // Calculate the actual start position from the muzzle
+    const actualOrigin = new Vector3(
+      this.position.x + muzzlePosition.x,
+      this.position.y + muzzlePosition.y,
+      this.position.z + muzzlePosition.z
+    );
+
+    // Calculate the end point of the raycast from the muzzle
+    const raycastHit = this.world.simulation.raycast(actualOrigin, direction, length, {
       filterGroups: CollisionGroupsBuilder.buildRawCollisionGroups({
         belongsTo: [CollisionGroup.ALL],
         collidesWith: [CollisionGroup.BLOCK, CollisionGroup.ENTITY],
@@ -263,34 +273,36 @@ export default abstract class GunEntity extends Entity {
     // Determine the actual length of the tracer based on hit point or max range
     const actualLength = raycastHit ? raycastHit.hitDistance : length;
 
+    // Calculate the end point for positioning
+    const endPoint = new Vector3(
+      actualOrigin.x + (direction.x * actualLength),
+      actualOrigin.y + (direction.y * actualLength),
+      actualOrigin.z + (direction.z * actualLength)
+    );
+
     // Create new tracer entity
     this._bulletTracerEntity = new Entity({
       modelUri: 'models/projectiles/bullet-trace.gltf',
-      // Scale the tracer to match the actual shot length
-      // The model is 3.5 units long by default (based on the model bounds)
-      modelScale: 0.1 * (actualLength / 3.5),
+      modelScale: 0.2,  // Make it thicker
       opacity: 1,
+      parent: this,     // Attach to gun so it moves with it
     });
 
-    // Calculate rotation to point in direction of shot
+    // Calculate rotation to point from origin to end point
+    const dx = endPoint.x - actualOrigin.x;
+    const dy = endPoint.y - actualOrigin.y;
+    const dz = endPoint.z - actualOrigin.z;
+
     const rotationQuat = Quaternion.fromEuler(
-      Math.atan2(-direction.y, Math.sqrt(direction.x * direction.x + direction.z * direction.z)) * (180 / Math.PI),
-      Math.atan2(direction.x, direction.z) * (180 / Math.PI),
+      Math.atan2(-dy, Math.sqrt(dx * dx + dz * dz)) * (180 / Math.PI),
+      Math.atan2(dx, dz) * (180 / Math.PI),
       0
     );
-    
-    // Position the tracer at the midpoint between origin and hit point
-    // This works because the model is centered
-    const midPoint = new Vector3(
-      origin.x + (direction.x * actualLength * 0.5),
-      origin.y + (direction.y * actualLength * 0.5),
-      origin.z + (direction.z * actualLength * 0.5)
-    );
 
-    // Spawn the tracer
-    this._bulletTracerEntity.spawn(this.world, midPoint, rotationQuat);
+    // Spawn at muzzle position
+    this._bulletTracerEntity.spawn(this.world, muzzlePosition, rotationQuat);
 
-    // Fade out and despawn after a short delay
+    // Fade out and despawn with longer visibility
     setTimeout(() => {
       if (this._bulletTracerEntity?.isSpawned) {
         this._bulletTracerEntity.setOpacity(0);
