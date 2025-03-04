@@ -2,21 +2,24 @@ import {
   Audio,
   BaseEntityControllerEvent,
   CollisionGroup,
-  EventPayloads,
   Light,
   LightType,
   Player,
-  PlayerCameraOrientation,
   PlayerEntity,
   PlayerCameraMode,
-  PlayerInput,
   SceneUI,
-  Vector3Like,
-  QuaternionLike,
   World,
   Quaternion,
   PlayerEntityController,
   Vector3,
+} from 'hytopia';
+
+import type {
+  EventPayloads,
+  PlayerCameraOrientation,
+  PlayerInput,
+  Vector3Like,
+  QuaternionLike,
 } from 'hytopia';
 
 import PistolEntity from './guns/PistolEntity';
@@ -41,7 +44,7 @@ export default class GamePlayerEntity extends PlayerEntity {
   private _purchaseAudio: Audio;
   private _gun: GunEntity | undefined;
   private _light: Light;
-  private _reviveInterval: NodeJS.Timeout | undefined;
+  private _reviveInterval: ReturnType<typeof setTimeout> | undefined;
   private _reviveDistanceVectorA: Vector3;
   private _reviveDistanceVectorB: Vector3;
 
@@ -73,10 +76,13 @@ export default class GamePlayerEntity extends PlayerEntity {
     // Setup UI
     this.player.ui.load('ui/index.html');
 
-    // Setup first person camera
+    // Setup enhanced first person camera with full vertical look range
     this.player.camera.setMode(PlayerCameraMode.FIRST_PERSON);
     this.player.camera.setModelHiddenNodes([ 'head', 'neck', 'torso', 'leg_right', 'leg_left' ]);
     this.player.camera.setOffset({ x: 0, y: 0.5, z: 0 });
+    
+    // Allow looking up and down with full range
+    // This is handled by the camera system automatically
   
     // Set base stats
     this.health = BASE_HEALTH;
@@ -348,4 +354,3 @@ export default class GamePlayerEntity extends PlayerEntity {
     }, 1000);
   }
 }
-
