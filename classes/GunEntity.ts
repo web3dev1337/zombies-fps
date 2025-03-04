@@ -243,26 +243,44 @@ export default abstract class GunEntity extends Entity {
       // Apply damage with headshot information
       hitEntity.takeDamage(this.damage, parentPlayerEntity, isHeadshot, hitPoint);
       
-      // Play headshot sound and visual feedback
-      if (isHeadshot && this.parent.world) {
-        // Play headshot sound
-        const headshotSound = new Audio({
-          uri: 'audio/sfx/headshot.mp3', // You may need to add this sound file
-          volume: 0.5,
-          loop: false,
-        });
-        headshotSound.play(this.parent.world, true);
+      // Play feedback sounds and visual effects
+      if (this.parent.world) {
+        if (isHeadshot) {
+          // Play headshot sound
+          const headshotSound = new Audio({
+            uri: 'audio/sfx/headshot.mp3',
+            volume: 0.5,
+            loop: false,
+          });
+          headshotSound.play(this.parent.world, true);
+          
+          // Apply screen shake for headshots
+          this._applyHeadshotFeedback(0.2);
+        }
         
-        // Apply screen shake for headshots
-        this._applyHeadshotFeedback();
+        // Check for critical hit
+        if (hitEntity.isCriticalHit()) {
+          // Play critical hit sound (using headshot sound for now)
+          const criticalSound = new Audio({
+            uri: 'audio/sfx/headshot.mp3', // Reusing headshot sound for critical hits
+            volume: 0.4,
+            loop: false,
+            playbackRate: 1.2, // Play slightly faster to differentiate from headshot sound
+          });
+          criticalSound.play(this.parent.world, true);
+          
+          // Apply stronger screen shake for critical hits
+          this._applyHeadshotFeedback(0.3);
+        }
       }
     }
   }
   
   /**
-   * Apply visual feedback for headshots
+   * Apply visual feedback for hits
+   * @param intensity The intensity of the screen shake (0.0 to 1.0)
    */
-  protected _applyHeadshotFeedback() {
+  protected _applyHeadshotFeedback(intensity: number = 0.2) {
     if (!this.parent || !this.parent.world) {
       return;
     }
@@ -273,6 +291,13 @@ export default abstract class GunEntity extends Entity {
     parentPlayerEntity.player.ui.sendData({ 
       type: 'headshot_flash',
       duration: 200 // milliseconds
+    });
+    
+    // Apply screen shake
+    parentPlayerEntity.player.ui.sendData({ 
+      type: 'screen_shake',
+      intensity: intensity,
+      duration: 200
     });
   }
 

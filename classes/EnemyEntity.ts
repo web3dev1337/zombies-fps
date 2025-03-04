@@ -19,6 +19,8 @@ const RETARGET_ACCUMULATOR_THRESHOLD_MS = 5000;
 const PATHFIND_ACCUMULATOR_THRESHOLD_MS = 3000;
 
 export interface EnemyEntityOptions extends EntityOptions {
+  criticalHitChance?: number;      // Chance of a critical hit (0-1)
+  criticalHitMultiplier?: number;  // Damage multiplier for critical hits
   damage: number;
   damageAudioUri?: string;
   health: number;
@@ -33,6 +35,8 @@ export interface EnemyEntityOptions extends EntityOptions {
 }
 
 export default class EnemyEntity extends Entity {
+  public criticalHitChance: number;
+  public criticalHitMultiplier: number;
   public damage: number;
   public health: number;
   public headshotMultiplier: number;
@@ -54,6 +58,8 @@ export default class EnemyEntity extends Entity {
     this.damage = options.damage;
     this.health = options.health;
     this.headshotMultiplier = options.headshotMultiplier ?? 2.5; // Default 2.5x damage for headshots
+    this.criticalHitChance = options.criticalHitChance ?? 0.1; // Default 10% chance for critical hits
+    this.criticalHitMultiplier = options.criticalHitMultiplier ?? 1.5; // Default 1.5x damage for critical hits
     this.jumpHeight = options.jumpHeight ?? 1;
     this.maxHealth = options.health;
     this.preferJumping = options.preferJumping ?? false;
@@ -115,6 +121,14 @@ export default class EnemyEntity extends Entity {
   }
   
   /**
+   * Check if a hit is a critical hit based on random chance
+   * @returns True if the hit is a critical hit, false otherwise
+   */
+  public isCriticalHit(): boolean {
+    return Math.random() < this.criticalHitChance;
+  }
+  
+  /**
    * Apply damage to the enemy
    * @param damage Base damage amount
    * @param fromPlayer Player who caused the damage
@@ -131,8 +145,23 @@ export default class EnemyEntity extends Entity {
       isHeadshot = this.isHeadshot(hitPoint);
     }
     
-    // Apply headshot multiplier if applicable
-    const actualDamage = isHeadshot ? damage * this.headshotMultiplier : damage;
+    // Check for critical hit
+    const isCritical = this.isCriticalHit();
+    
+    // Calculate damage with multipliers
+    let actualDamage = damage;
+    let damageType = '';
+    
+    if (isHeadshot) {
+      actualDamage *= this.headshotMultiplier;
+      damageType = 'headshot';
+    }
+    
+    if (isCritical) {
+      actualDamage *= this.criticalHitMultiplier;
+      damageType = isHeadshot ? 'critical_headshot' : 'critical';
+    }
+    
     this.health -= actualDamage;
 
     if (this._damageAudio) {
@@ -141,37 +170,95 @@ export default class EnemyEntity extends Entity {
 
     // Give reward based on damage as % of health
     if (fromPlayer) {
-      // Increase reward for headshots
-      const rewardMultiplier = isHeadshot ? 2 : 1;
-      fromPlayer.addMoney((actualDamage / this.maxHealth) * this.reward * rewardMultiplier);
+      // Calculate reward multiplier based on hit type
+      let rewardMultiplier = 1;
+      if (isHeadshot) rewardMultiplier *= 2;
+      if (isCritical) rewardMultiplier *= 1.5;
       
-      // Notify player of headshot
-      if (isHeadshot) {
+      const moneyReward = (actualDamage / this.maxHealth) * this.reward * rewardMultiplier;
+      fromPlayer.addMoney(moneyReward);
+      
+      // Send appropriate UI notification
+      if (damageType) {
         fromPlayer.player.ui.sendData({ 
-          type: 'headshot',
-          reward: (actualDamage / this.maxHealth) * this.reward * rewardMultiplier
+          type: damageType,
+          damage: actualDamage,
+          reward: moneyReward
         });
         
-        // Display headshot text in the world
+        // Display hit text in the world
         if (this.world) {
-          this.world.chatManager.sendPlayerMessage(
-            fromPlayer.player, 
-            `HEADSHOT! +$${Math.floor((actualDamage / this.maxHealth) * this.reward * rewardMultiplier)}`, 
-            'FF0000'
-          );
+          let message = '';
+          let color = '';
+          
+          switch (damageType) {
+            case 'headshot':
+              message = `HEADSHOT! +$${Math.floor(moneyReward)}`;
+              color = 'FF0000';
+              break;
+            case 'critical':
+              message = `CRITICAL HIT! +$${Math.floor(moneyReward)}`;
+              color = 'FFA500';
+              break;
+            case 'critical_headshot':
+              message = `CRITICAL HEADSHOT! +$${Math.floor(moneyReward)}`;
+              color = 'FF00FF';
+              break;
+          }
+          
+          if (message) {
+            this.world.chatManager.sendPlayerMessage(
+              fromPlayer.player, 
+              message, 
+              color
+            );
+          }
         }
       }
     }
 
+    // Apply visual feedback based on hit type
+    if (this.isSpawned) {
+      if (isCritical) {
+        // Apply orange tint for critical hits
+        this.setTintColor({ r: 255, g: 165, b: 0 });
+        
+        // Apply stronger screen shake for critical hits
+        if (fromPlayer) {
+          fromPlayer.player.ui.sendData({ 
+            type: 'screen_shake',
+            intensity: isHeadshot ? 0.4 : 0.2,
+            duration: 200
+          });
+        }
+      } else {
+        // Apply red tint for normal hits
+        this.setTintColor({ r: 255, g: 0, b: 0 });
+      }
+      
+      // Reset tint after 75ms
+      setTimeout(() => {
+        if (this.isSpawned) {
+          this.setTintColor({ r: 255, g: 255, b: 255 });
+        }
+      }, 75);
+    }
+
     if (this.health <= 0 && this.isSpawned) {
-      // Enemy is dead, give half reward & despawn
+      // Enemy is dead, give additional reward & despawn
+      if (fromPlayer) {
+        // Bonus for kill
+        const killBonus = this.reward * 0.5;
+        fromPlayer.addMoney(killBonus);
+        
+        // Notify of kill
+        fromPlayer.player.ui.sendData({ 
+          type: 'kill',
+          reward: killBonus
+        });
+      }
+      
       this.despawn();
-    } else {
-      // Apply red tint for 75ms to indicate damage
-      this.setTintColor({ r: 255, g: 0, b: 0 });
-      // Reset tint after 75ms, make sure to check if the entity is still
-      // spawned to prevent setting tint on a despawned entity
-      setTimeout(() => this.isSpawned ? this.setTintColor({ r: 255, g: 255, b: 255 }) : undefined, 75);
     }
   }
 

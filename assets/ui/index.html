@@ -14,8 +14,14 @@
 <div class="crosshair"></div>
 <div class="vignette"></div>
 <div class="headshot-flash"></div>
-<div class="headshot-text">HEADSHOT!</div>
+<div class="critical-flash"></div>
+<div class="hit-text">HEADSHOT!</div>
+<div class="kill-text">KILL!</div>
 <div class="wave-announcement">Wave <span class="wave-number"></span></div>
+<div class="killstreak-counter">
+  <span class="killstreak-number">0</span>
+  <span class="killstreak-label">KILL STREAK</span>
+</div>
 
 <div class="game-info">
   <div class="timer">Time: 00:00</div>
@@ -157,33 +163,142 @@
       return console.warn('No type received for data', data);
     }
     
-    // Handle headshot feedback
-    if (type === 'headshot') {
-      const { reward } = data;
-      const headshotText = document.querySelector('.headshot-text');
+    // Track kill streak
+    let killStreak = 0;
+    let killStreakTimeout;
+    
+    // Handle hit feedback (headshot, critical, critical_headshot)
+    if (type === 'headshot' || type === 'critical' || type === 'critical_headshot') {
+      const { reward, damage } = data;
+      const hitText = document.querySelector('.hit-text');
       
-      // Show headshot text with reward
-      headshotText.textContent = `HEADSHOT! +$${Math.floor(reward)}`;
-      headshotText.classList.add('show');
+      // Set appropriate text and color based on hit type
+      let message = '';
+      let color = '';
+      
+      switch (type) {
+        case 'headshot':
+          message = `HEADSHOT! +$${Math.floor(reward)}`;
+          color = '#ff0000';
+          // Red flash
+          showFlash('headshot-flash', 200);
+          break;
+        case 'critical':
+          message = `CRITICAL HIT! +$${Math.floor(reward)}`;
+          color = '#ffa500';
+          // Orange flash
+          showFlash('critical-flash', 200);
+          break;
+        case 'critical_headshot':
+          message = `CRITICAL HEADSHOT! +$${Math.floor(reward)}`;
+          color = '#ff00ff';
+          // Both flashes
+          showFlash('headshot-flash', 200);
+          showFlash('critical-flash', 200);
+          break;
+      }
+      
+      // Show hit text with reward
+      hitText.textContent = message;
+      hitText.style.color = color;
+      hitText.classList.add('show');
       
       // Hide after animation
       setTimeout(() => {
-        headshotText.classList.remove('show');
+        hitText.classList.remove('show');
       }, 1500);
     }
     
-    // Handle headshot screen flash
-    if (type === 'headshot_flash') {
-      const { duration } = data;
-      const headshotFlash = document.querySelector('.headshot-flash');
+    // Handle kill feedback
+    if (type === 'kill') {
+      const { reward } = data;
+      const killText = document.querySelector('.kill-text');
       
-      // Show flash
-      headshotFlash.classList.add('show');
+      // Increment kill streak
+      killStreak++;
       
-      // Hide after specified duration
+      // Clear previous timeout
+      if (killStreakTimeout) {
+        clearTimeout(killStreakTimeout);
+      }
+      
+      // Reset kill streak after 5 seconds of no kills
+      killStreakTimeout = setTimeout(() => {
+        killStreak = 0;
+        updateKillStreakCounter();
+      }, 5000);
+      
+      // Update kill streak counter
+      updateKillStreakCounter();
+      
+      // Show kill text with reward
+      killText.textContent = `KILL! +$${Math.floor(reward)}`;
+      killText.classList.add('show');
+      
+      // Hide after animation
       setTimeout(() => {
-        headshotFlash.classList.remove('show');
+        killText.classList.remove('show');
+      }, 1500);
+      
+      // Apply special effects for kill streaks
+      if (killStreak >= 3) {
+        // Apply screen shake for kill streaks
+        applyScreenShake(0.1 * Math.min(killStreak, 10));
+      }
+    }
+    
+    // Handle screen shake
+    if (type === 'screen_shake') {
+      const { intensity, duration } = data;
+      applyScreenShake(intensity, duration);
+    }
+    
+    // Function to show a flash effect
+    function showFlash(flashClass, duration) {
+      const flashElement = document.querySelector(`.${flashClass}`);
+      flashElement.classList.add('show');
+      
+      setTimeout(() => {
+        flashElement.classList.remove('show');
       }, duration || 200);
+    }
+    
+    // Function to update kill streak counter
+    function updateKillStreakCounter() {
+      const counter = document.querySelector('.killstreak-counter');
+      const number = counter.querySelector('.killstreak-number');
+      
+      number.textContent = killStreak;
+      
+      if (killStreak >= 3) {
+        counter.classList.add('active');
+      } else {
+        counter.classList.remove('active');
+      }
+    }
+    
+    // Function to apply screen shake effect
+    function applyScreenShake(intensity = 0.2, duration = 200) {
+      const body = document.body;
+      body.style.transition = 'none';
+      
+      // Generate random offsets based on intensity
+      const shakeLoop = (timeLeft) => {
+        if (timeLeft <= 0) {
+          body.style.transform = 'translate(0, 0)';
+          body.style.transition = '';
+          return;
+        }
+        
+        const xOffset = (Math.random() - 0.5) * intensity * 20;
+        const yOffset = (Math.random() - 0.5) * intensity * 20;
+        
+        body.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
+        
+        requestAnimationFrame(() => shakeLoop(timeLeft - 16));
+      };
+      
+      shakeLoop(duration);
     }
 
     if (type === 'start') {
@@ -634,7 +749,7 @@
     z-index: 1000;
   }
 
-  /* Headshot feedback styles */
+  /* Feedback effects styles */
   .headshot-flash {
     position: fixed;
     top: 0;
@@ -648,11 +763,25 @@
     transition: opacity 0.05s ease-in;
   }
   
-  .headshot-flash.show {
+  .critical-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    background-color: rgba(255, 165, 0, 0.2);
+    opacity: 0;
+    z-index: 1001;
+    transition: opacity 0.05s ease-in;
+  }
+  
+  .headshot-flash.show,
+  .critical-flash.show {
     opacity: 1;
   }
   
-  .headshot-text {
+  .hit-text {
     position: fixed;
     top: 40%;
     left: 50%;
@@ -667,13 +796,64 @@
     z-index: 1002;
   }
   
-  .headshot-text.show {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-    animation: headshotPulse 1.5s ease-out forwards;
+  .kill-text {
+    position: fixed;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    font-family: "Creepster", serif;
+    font-weight: 400;
+    font-size: 72px;
+    color: #44ff44;
+    text-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1002;
   }
   
-  @keyframes headshotPulse {
+  .hit-text.show,
+  .kill-text.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    animation: textPulse 1.5s ease-out forwards;
+  }
+  
+  .killstreak-counter {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 5px;
+    padding: 5px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  
+  .killstreak-counter.active {
+    opacity: 1;
+    transform: scale(1);
+  }
+  
+  .killstreak-number {
+    font-family: "Creepster", serif;
+    font-size: 36px;
+    color: #ff4444;
+    text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+  }
+  
+  .killstreak-label {
+    font-family: 'Arial', sans-serif;
+    font-size: 12px;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+  }
+  
+  @keyframes textPulse {
     0% {
       transform: translate(-50%, -50%) scale(0);
       opacity: 0;
