@@ -30,6 +30,7 @@ const BASE_HEALTH = 100;
 const REVIVE_REQUIRED_HEALTH = 50;
 const REVIVE_PROGRESS_INTERVAL_MS = 1000;
 const REVIVE_DISTANCE_THRESHOLD = 3;
+const REVIVE_CHECK_INTERVAL = 1000;
 
 export default class GamePlayerEntity extends PlayerEntity {
   public health: number;
@@ -41,7 +42,7 @@ export default class GamePlayerEntity extends PlayerEntity {
   private _purchaseAudio: Audio;
   private _gun: GunEntity | undefined;
   private _light: Light;
-  private _reviveInterval: NodeJS.Timeout | undefined;
+  private _reviveInterval: ReturnType<typeof setTimeout> | undefined;
   private _reviveDistanceVectorA: Vector3;
   private _reviveDistanceVectorB: Vector3;
 
@@ -123,27 +124,33 @@ export default class GamePlayerEntity extends PlayerEntity {
     this._reviveDistanceVectorB = new Vector3(0, 0, 0);
   }
 
-  public override spawn(world: World, position: Vector3Like, rotation?: QuaternionLike): void {
-    super.spawn(world, position, rotation);
+  public override spawn(world: World, position: Vector3Like, rotation: QuaternionLike) {
+    console.log('[GamePlayerEntity] Attempting to spawn player');
+    try {
+      super.spawn(world, position, rotation);
+      console.log('[GamePlayerEntity] Player spawned successfully');
 
-    // Prevent players from colliding, setup appropriate collision groups for invisible walls, etc.
-    this.setCollisionGroupsForSolidColliders({
-      belongsTo: [ CollisionGroup.PLAYER ],
-      collidesWith: [ CollisionGroup.BLOCK, CollisionGroup.ENTITY, CollisionGroup.ENTITY_SENSOR, INVISIBLE_WALL_COLLISION_GROUP ],
-    });
+      // Prevent players from colliding, setup appropriate collision groups for invisible walls, etc.
+      this.setCollisionGroupsForSolidColliders({
+        belongsTo: [ CollisionGroup.PLAYER ],
+        collidesWith: [ CollisionGroup.BLOCK, CollisionGroup.ENTITY, CollisionGroup.ENTITY_SENSOR, INVISIBLE_WALL_COLLISION_GROUP ],
+      });
 
-    // Give player a pistol.
-    this.equipGun(new PistolEntity({ parent: this }));
+      // Give player a pistol.
+      this.equipGun(new PistolEntity({ parent: this }));
 
-    // Spawn light
-    this._light.spawn(world);
+      // Spawn light
+      this._light.spawn(world);
 
-    // Start auto heal ticker
-    this._autoHealTicker();
+      // Start auto heal ticker
+      this._autoHealTicker();
 
-    // Reset any prior UI from respawn
-    this._updatePlayerUIHealth();
-    this._updatePlayerUIMoney();
+      // Reset any prior UI from respawn
+      this._updatePlayerUIHealth();
+      this._updatePlayerUIMoney();
+    } catch (error) {
+      console.error('[GamePlayerEntity] Error spawning player:', error);
+    }
   }
 
   public addMoney(amount: number) {
@@ -200,14 +207,12 @@ export default class GamePlayerEntity extends PlayerEntity {
     this._damageAudio.play(this.world, true);
   }
 
-  public progressRevive(byPlayer: GamePlayerEntity) {
-    if (!this.world) {
-      return;
+  public startRevive(byPlayer: GamePlayerEntity) {
+    if (this._reviveInterval) {
+      globalThis.clearTimeout(this._reviveInterval);
     }
 
-    clearTimeout(this._reviveInterval);
-
-    this._reviveInterval = setTimeout(() => {
+    this._reviveInterval = globalThis.setTimeout(() => {
       this._reviveDistanceVectorA.set([ this.position.x, this.position.y, this.position.z ]);
       this._reviveDistanceVectorB.set([ byPlayer.position.x, byPlayer.position.y, byPlayer.position.z ]);
       const distance = this._reviveDistanceVectorA.distance(this._reviveDistanceVectorB);
@@ -226,9 +231,21 @@ export default class GamePlayerEntity extends PlayerEntity {
       if (this.health >= REVIVE_REQUIRED_HEALTH) {
         this._setDowned(false);
       } else {
-        this.progressRevive(byPlayer);
+        this.startRevive(byPlayer);
       }
-    }, REVIVE_PROGRESS_INTERVAL_MS);
+    }, REVIVE_CHECK_INTERVAL);
+  }
+
+  public stopRevive() {
+    if (this._reviveInterval) {
+      globalThis.clearTimeout(this._reviveInterval);
+      this._reviveInterval = undefined;
+    }
+  }
+
+  public override despawn() {
+    this.stopRevive();
+    super.despawn();
   }
 
   private _onTickWithPlayerInput = (payload: EventPayloads[BaseEntityControllerEvent.TICK_WITH_PLAYER_INPUT]) => {
@@ -321,7 +338,7 @@ export default class GamePlayerEntity extends PlayerEntity {
     }
 
     if (hitEntity instanceof GamePlayerEntity && hitEntity.downed) {
-      hitEntity.progressRevive(this);
+      hitEntity.startRevive(this);
     }
   }
 

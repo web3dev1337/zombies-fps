@@ -73,12 +73,17 @@ export default class PistolEntity extends GunEntity {
       z: basePosition.z + 0.1,  // Move back
     });
     
-    // Return to original position after a short delay
-    setTimeout(() => {
+    // Use Bun's native setTimeout
+    const timer = globalThis.setTimeout(() => {
       if (this._firstPersonViewEntity?.isSpawned) {
         this._firstPersonViewEntity.setPosition(basePosition);
       }
     }, 100);
+
+    // Clean up timer if entity is despawned
+    this.once('despawn', () => {
+      globalThis.clearTimeout(timer);
+    });
   }
 
   public override getMuzzleFlashPositionRotation(): { position: Vector3Like, rotation: QuaternionLike } {
