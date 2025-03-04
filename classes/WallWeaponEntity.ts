@@ -86,8 +86,16 @@ export default class WallWeaponEntity extends InteractableEntity {
       return;
     }
 
-    // Give player the weapon
-    interactingPlayer.equipGun(new this._weaponClass({ parent: interactingPlayer }));
+    // Create and equip the weapon
+    const weapon = new this._weaponClass({});
+    interactingPlayer.equipGun(weapon);
+
+    // Play purchase sound
+    const purchaseSound = new Audio({
+      uri: 'audio/sfx/purchase.mp3',
+      volume: 0.5,
+    });
+    purchaseSound.play(this.world, true);
   }
 
   public override spawn(world: World, position: Vector3Like, rotation?: QuaternionLike): void {
