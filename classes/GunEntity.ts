@@ -3,12 +3,15 @@ import {
   CollisionGroup,
   CollisionGroupsBuilder,
   Entity,
-  EntityOptions,
   PlayerEntity,
-  Vector3Like,
-  QuaternionLike,
   World,
   PlayerEntityController,
+} from 'hytopia';
+
+import type {
+  EntityOptions,
+  Vector3Like,
+  QuaternionLike,
 } from 'hytopia';
 
 import EnemyEntity from './EnemyEntity';
@@ -226,11 +229,51 @@ export default abstract class GunEntity extends Entity {
       }),
     });
 
-    const hitEntity = raycastHit?.hitEntity;
+    if (!raycastHit) {
+      return;
+    }
+
+    const hitEntity = raycastHit.hitEntity;
+    const hitPoint = raycastHit.hitPoint;
 
     if (hitEntity && hitEntity instanceof EnemyEntity) {
-      hitEntity.takeDamage(this.damage, parentPlayerEntity);
+      // Check if it's a headshot based on hit position
+      const isHeadshot = hitEntity.isHeadshot(hitPoint);
+      
+      // Apply damage with headshot information
+      hitEntity.takeDamage(this.damage, parentPlayerEntity, isHeadshot, hitPoint);
+      
+      // Play headshot sound and visual feedback
+      if (isHeadshot && this.parent.world) {
+        // Play headshot sound
+        const headshotSound = new Audio({
+          uri: 'audio/sfx/headshot.mp3', // You may need to add this sound file
+          volume: 0.5,
+          loop: false,
+        });
+        headshotSound.play(this.parent.world, true);
+        
+        // Apply screen shake for headshots
+        this._applyHeadshotFeedback();
+      }
     }
+  }
+  
+  /**
+   * Apply visual feedback for headshots
+   */
+  protected _applyHeadshotFeedback() {
+    if (!this.parent || !this.parent.world) {
+      return;
+    }
+    
+    const parentPlayerEntity = this.parent as GamePlayerEntity;
+    
+    // Flash the screen red briefly for headshot feedback
+    parentPlayerEntity.player.ui.sendData({ 
+      type: 'headshot_flash',
+      duration: 200 // milliseconds
+    });
   }
 
   private _updatePlayerUIAmmo() {

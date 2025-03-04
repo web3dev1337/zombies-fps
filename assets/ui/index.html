@@ -13,6 +13,8 @@
 
 <div class="crosshair"></div>
 <div class="vignette"></div>
+<div class="headshot-flash"></div>
+<div class="headshot-text">HEADSHOT!</div>
 <div class="wave-announcement">Wave <span class="wave-number"></span></div>
 
 <div class="game-info">
@@ -153,6 +155,35 @@
 
     if (!type) {
       return console.warn('No type received for data', data);
+    }
+    
+    // Handle headshot feedback
+    if (type === 'headshot') {
+      const { reward } = data;
+      const headshotText = document.querySelector('.headshot-text');
+      
+      // Show headshot text with reward
+      headshotText.textContent = `HEADSHOT! +$${Math.floor(reward)}`;
+      headshotText.classList.add('show');
+      
+      // Hide after animation
+      setTimeout(() => {
+        headshotText.classList.remove('show');
+      }, 1500);
+    }
+    
+    // Handle headshot screen flash
+    if (type === 'headshot_flash') {
+      const { duration } = data;
+      const headshotFlash = document.querySelector('.headshot-flash');
+      
+      // Show flash
+      headshotFlash.classList.add('show');
+      
+      // Hide after specified duration
+      setTimeout(() => {
+        headshotFlash.classList.remove('show');
+      }, duration || 200);
     }
 
     if (type === 'start') {
@@ -603,12 +634,74 @@
     z-index: 1000;
   }
 
+  /* Headshot feedback styles */
+  .headshot-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    background-color: rgba(255, 0, 0, 0.2);
+    opacity: 0;
+    z-index: 1001;
+    transition: opacity 0.05s ease-in;
+  }
+  
+  .headshot-flash.show {
+    opacity: 1;
+  }
+  
+  .headshot-text {
+    position: fixed;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    font-family: "Creepster", serif;
+    font-weight: 400;
+    font-size: 64px;
+    color: #ff0000;
+    text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1002;
+  }
+  
+  .headshot-text.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    animation: headshotPulse 1.5s ease-out forwards;
+  }
+  
+  @keyframes headshotPulse {
+    0% {
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 0;
+    }
+    20% {
+      transform: translate(-50%, -50%) scale(1.3);
+      opacity: 1;
+    }
+    40% {
+      transform: translate(-50%, -50%) scale(1.1);
+      opacity: 1;
+    }
+    80% {
+      transform: translate(-50%, -50%) scale(1.1);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(0.8);
+      opacity: 0;
+    }
+  }
+
   .wave-announcement.show {
     transform: translate(-50%, -50%) scale(1);
     opacity: 1;
     animation: pulseAndFade 3s ease-out forwards;
   }
-
+  
   @keyframes pulseAndFade {
     0% {
       transform: translate(-50%, -50%) scale(0);

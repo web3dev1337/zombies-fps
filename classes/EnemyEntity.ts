@@ -1,13 +1,17 @@
 import {
   Audio,
   Entity,
-  EntityOptions,
   EntityEvent,
-  EventPayloads,
   PathfindingEntityController,
 } from 'hytopia';
 
-import type { QuaternionLike, Vector3Like, World } from 'hytopia';
+import type { 
+  EntityOptions,
+  EventPayloads,
+  QuaternionLike, 
+  Vector3Like, 
+  World 
+} from 'hytopia';
 
 import GamePlayerEntity from './GamePlayerEntity';
 
@@ -18,6 +22,7 @@ export interface EnemyEntityOptions extends EntityOptions {
   damage: number;
   damageAudioUri?: string;
   health: number;
+  headshotMultiplier?: number;     // Damage multiplier for headshots
   idleAudioUri?: string;
   idleAudioReferenceDistance?: number;
   idleAudioVolume?: number;
@@ -30,6 +35,7 @@ export interface EnemyEntityOptions extends EntityOptions {
 export default class EnemyEntity extends Entity {
   public damage: number;
   public health: number;
+  public headshotMultiplier: number;
   public jumpHeight: number;
   public maxHealth: number;
   public preferJumping: boolean;
@@ -47,6 +53,7 @@ export default class EnemyEntity extends Entity {
     super({ ...options, tag: 'enemy' });
     this.damage = options.damage;
     this.health = options.health;
+    this.headshotMultiplier = options.headshotMultiplier ?? 2.5; // Default 2.5x damage for headshots
     this.jumpHeight = options.jumpHeight ?? 1;
     this.maxHealth = options.health;
     this.preferJumping = options.preferJumping ?? false;
@@ -86,12 +93,47 @@ export default class EnemyEntity extends Entity {
     }
   }
 
-  public takeDamage(damage: number, fromPlayer?: GamePlayerEntity) {
+  /**
+   * Check if a hit is a headshot based on the hit position
+   * @param hitPoint The position where the enemy was hit
+   * @returns True if the hit is a headshot, false otherwise
+   */
+  public isHeadshot(hitPoint: Vector3Like): boolean {
+    if (!this.isSpawned) {
+      return false;
+    }
+    
+    // Calculate the height of the hit relative to the enemy's position
+    // The head is typically at the top of the model
+    const headHeight = this.position.y + 1.7; // Assuming the model is about 2 units tall
+    const headRadius = 0.3; // Approximate radius of the head
+    
+    // Check if the hit point is within the head area
+    return hitPoint.y > headHeight - headRadius && 
+           Math.abs(hitPoint.x - this.position.x) < headRadius && 
+           Math.abs(hitPoint.z - this.position.z) < headRadius;
+  }
+  
+  /**
+   * Apply damage to the enemy
+   * @param damage Base damage amount
+   * @param fromPlayer Player who caused the damage
+   * @param isHeadshot Whether this is a headshot
+   * @param hitPoint The position where the enemy was hit
+   */
+  public takeDamage(damage: number, fromPlayer?: GamePlayerEntity, isHeadshot?: boolean, hitPoint?: Vector3Like) {
     if (!this.world) {
       return;
     }
-
-    this.health -= damage;
+    
+    // Check for headshot if not explicitly provided but hit point is available
+    if (isHeadshot === undefined && hitPoint) {
+      isHeadshot = this.isHeadshot(hitPoint);
+    }
+    
+    // Apply headshot multiplier if applicable
+    const actualDamage = isHeadshot ? damage * this.headshotMultiplier : damage;
+    this.health -= actualDamage;
 
     if (this._damageAudio) {
       this._damageAudio.play(this.world, true);
@@ -99,7 +141,26 @@ export default class EnemyEntity extends Entity {
 
     // Give reward based on damage as % of health
     if (fromPlayer) {
-      fromPlayer.addMoney((this.damage / this.maxHealth) * this.reward);
+      // Increase reward for headshots
+      const rewardMultiplier = isHeadshot ? 2 : 1;
+      fromPlayer.addMoney((actualDamage / this.maxHealth) * this.reward * rewardMultiplier);
+      
+      // Notify player of headshot
+      if (isHeadshot) {
+        fromPlayer.player.ui.sendData({ 
+          type: 'headshot',
+          reward: (actualDamage / this.maxHealth) * this.reward * rewardMultiplier
+        });
+        
+        // Display headshot text in the world
+        if (this.world) {
+          this.world.chatManager.sendPlayerMessage(
+            fromPlayer.player, 
+            `HEADSHOT! +$${Math.floor((actualDamage / this.maxHealth) * this.reward * rewardMultiplier)}`, 
+            'FF0000'
+          );
+        }
+      }
     }
 
     if (this.health <= 0 && this.isSpawned) {
