@@ -147,43 +147,100 @@ export default abstract class GunEntity extends Entity {
    * Starts weapon sway animation for more realistic first-person view
    */
   private _startWeaponSway() {
+    // Add debug flag at top of file
+    const DEBUG_SWAY = true;
+    
     if (!this._firstPersonViewEntity || !this.parent) {
-      return;
+        console.warn('[WeaponSway] Cannot start - missing required entities');
+        return;
     }
     
-    const parentPlayerEntity = this.parent as GamePlayerEntity;
+    // Clean up any existing handlers first
+    try {
+        this.offAll(EntityEvent.TICK);
+        if (DEBUG_SWAY) console.log('[WeaponSway] Cleaned up existing handlers');
+    } catch (e) {
+        console.error('[WeaponSway] Error cleaning up handlers:', e);
+    }
     
-    // Add tick event listener to update weapon position based on movement
-    this.on(EntityEvent.TICK, (payload) => {
-      if (!this._firstPersonViewEntity?.isSpawned) {
-        return;
-      }
-      
-      // Get player input and movement
-      const input = parentPlayerEntity.player.input;
-      const isMoving = input.w || input.a || input.s || input.d;
-      const isSprinting = input.shift;
-      
-      // Calculate sway amount based on movement
-      const swayAmount = isMoving ? (isSprinting ? 0.01 : 0.005) : 0.002;
-      const swaySpeed = isMoving ? (isSprinting ? 5 : 3) : 1;
-      
-      // Calculate sway offsets using sine waves for natural movement
-      const time = performance.now() / 1000;
-      const horizontalSway = Math.sin(time * swaySpeed) * swayAmount;
-      const verticalSway = Math.cos(time * swaySpeed * 2) * swayAmount / 2;
-      
-      // Get base position
-      const basePosition = this._viewModelOffset || { x: 0.3, y: -0.3, z: -0.5 };
-      
-      // Apply sway to weapon position
-      if (this._firstPersonViewEntity.isSpawned) {
-        this._firstPersonViewEntity.setPosition({
-          x: basePosition.x + horizontalSway,
-          y: basePosition.y + verticalSway,
-          z: basePosition.z,
-        });
-      }
+    let frameCount = 0;
+    let lastUpdate = performance.now();
+    const updateInterval = 1000 / 60; // 60fps max
+    
+    const tickHandler = (payload: any) => {
+        try {
+            const now = performance.now();
+            if (now - lastUpdate < updateInterval) {
+                return;
+            }
+            
+            // Safety checks
+            if (!this.isSpawned || !this._firstPersonViewEntity?.isSpawned || !this.parent) {
+                console.warn('[WeaponSway] Invalid state detected, cleaning up');
+                this.off(EntityEvent.TICK, tickHandler);
+                return;
+            }
+
+            frameCount++;
+            if (DEBUG_SWAY && frameCount % 600 === 0) { // Log every 10 seconds at 60fps
+                console.log('[WeaponSway] Still running, frames:', frameCount);
+            }
+
+            const parentPlayerEntity = this.parent as GamePlayerEntity;
+            if (!parentPlayerEntity.player?.input) {
+                return;
+            }
+
+            // Get player input with null checks
+            const input = parentPlayerEntity.player.input;
+            const isMoving = Boolean(input.w || input.a || input.s || input.d);
+            const isSprinting = Boolean(input.shift);
+            
+            // Reduced sway values
+            const swayAmount = isMoving ? (isSprinting ? 0.003 : 0.002) : 0.0005;
+            const swaySpeed = isMoving ? (isSprinting ? 3 : 1.5) : 0.25;
+            
+            // Calculate sway with time dampening
+            const time = (now % 10000) / 1000; // Reset every 10 seconds to prevent floating point issues
+            const horizontalSway = Math.sin(time * swaySpeed) * swayAmount;
+            const verticalSway = Math.cos(time * swaySpeed * 2) * swayAmount / 2;
+            
+            // Get base position with safety check
+            const basePosition = this._viewModelOffset || { x: 0.3, y: -0.3, z: -0.5 };
+            
+            if (this._firstPersonViewEntity.isSpawned) {
+                this._firstPersonViewEntity.setPosition({
+                    x: basePosition.x + horizontalSway,
+                    y: basePosition.y + verticalSway,
+                    z: basePosition.z
+                });
+            }
+            
+            lastUpdate = now;
+            
+        } catch (error) {
+            console.error('[WeaponSway] Critical error in tick handler:', error);
+            // Attempt cleanup on error
+            this.off(EntityEvent.TICK, tickHandler);
+        }
+    };
+
+    // Wrap the event binding in try-catch
+    try {
+        this.on(EntityEvent.TICK, tickHandler);
+        if (DEBUG_SWAY) console.log('[WeaponSway] Successfully started weapon sway');
+    } catch (e) {
+        console.error('[WeaponSway] Failed to bind tick handler:', e);
+    }
+
+    // Ensure cleanup on despawn
+    this.once('despawn', () => {
+        try {
+            this.off(EntityEvent.TICK, tickHandler);
+            if (DEBUG_SWAY) console.log('[WeaponSway] Cleaned up on despawn');
+        } catch (e) {
+            console.error('[WeaponSway] Error during despawn cleanup:', e);
+        }
     });
   }
 
@@ -367,5 +424,16 @@ export default abstract class GunEntity extends Entity {
   // convenience helper for getting the node name of the hand the gun is held in.
   private static _getParentNodeName(hand: GunHand): string {
     return hand === 'left' ? 'hand_left_anchor' : 'hand_right_anchor';
+  }
+
+  // Override despawn to ensure cleanup
+  public override despawn() {
+    // Clean up first person view entity
+    if (this._firstPersonViewEntity?.isSpawned) {
+        this._firstPersonViewEntity.despawn();
+        this._firstPersonViewEntity = undefined;
+    }
+    
+    super.despawn();
   }
 }
