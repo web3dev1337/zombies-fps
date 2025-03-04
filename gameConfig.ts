@@ -210,7 +210,7 @@ export const WALL_WEAPONS = [
     position: { x: -5, y: 1.5, z: 20 },
     rotation: Quaternion.fromEuler(0, 90, 0),
     price: 5,
-    weaponClass: PistolEntity,
+    weaponClass: AR15Entity,
     modelUri: 'models/items/ar-15.glb',
     displayOffset: { x: 0, y: 0.5, z: 0.3 },
     displayRotation: Quaternion.fromEuler(-90, 0, 0),
