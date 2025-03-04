@@ -14,7 +14,6 @@
 <div class="crosshair"></div>
 <div class="vignette"></div>
 <div class="headshot-flash"></div>
-<div class="critical-flash"></div>
 <div class="hit-text">HEADSHOT!</div>
 <div class="kill-text">KILL!</div>
 <div class="wave-announcement">Wave <span class="wave-number"></span></div>
@@ -167,41 +166,18 @@
     let killStreak = 0;
     let killStreakTimeout;
     
-    // Handle hit feedback (headshot, critical, critical_headshot)
-    if (type === 'headshot' || type === 'critical' || type === 'critical_headshot') {
+    // Handle hit feedback (headshot)
+    if (type === 'headshot') {
       const { reward, damage } = data;
       const hitText = document.querySelector('.hit-text');
       
-      // Set appropriate text and color based on hit type
-      let message = '';
-      let color = '';
-      
-      switch (type) {
-        case 'headshot':
-          message = `HEADSHOT! +$${Math.floor(reward)}`;
-          color = '#ff0000';
-          // Red flash
-          showFlash('headshot-flash', 200);
-          break;
-        case 'critical':
-          message = `CRITICAL HIT! +$${Math.floor(reward)}`;
-          color = '#ffa500';
-          // Orange flash
-          showFlash('critical-flash', 200);
-          break;
-        case 'critical_headshot':
-          message = `CRITICAL HEADSHOT! +$${Math.floor(reward)}`;
-          color = '#ff00ff';
-          // Both flashes
-          showFlash('headshot-flash', 200);
-          showFlash('critical-flash', 200);
-          break;
-      }
-      
       // Show hit text with reward
-      hitText.textContent = message;
-      hitText.style.color = color;
+      hitText.textContent = `HEADSHOT! +$${Math.floor(reward)}`;
+      hitText.style.color = '#ff0000';
       hitText.classList.add('show');
+      
+      // Show red flash
+      showFlash('headshot-flash', 200);
       
       // Hide after animation
       setTimeout(() => {
@@ -763,21 +739,7 @@
     transition: opacity 0.05s ease-in;
   }
   
-  .critical-flash {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    background-color: rgba(255, 165, 0, 0.2);
-    opacity: 0;
-    z-index: 1001;
-    transition: opacity 0.05s ease-in;
-  }
-  
-  .headshot-flash.show,
-  .critical-flash.show {
+  .headshot-flash.show {
     opacity: 1;
   }
   

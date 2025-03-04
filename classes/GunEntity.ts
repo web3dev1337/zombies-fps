@@ -244,34 +244,17 @@ export default abstract class GunEntity extends Entity {
       hitEntity.takeDamage(this.damage, parentPlayerEntity, isHeadshot, hitPoint);
       
       // Play feedback sounds and visual effects
-      if (this.parent.world) {
-        if (isHeadshot) {
-          // Play headshot sound
-          const headshotSound = new Audio({
-            uri: 'audio/sfx/headshot.mp3',
-            volume: 0.5,
-            loop: false,
-          });
-          headshotSound.play(this.parent.world, true);
-          
-          // Apply screen shake for headshots
-          this._applyHeadshotFeedback(0.2);
-        }
+      if (this.parent.world && isHeadshot) {
+        // Play headshot sound
+        const headshotSound = new Audio({
+          uri: 'audio/sfx/headshot.mp3',
+          volume: 0.5,
+          loop: false,
+        });
+        headshotSound.play(this.parent.world, true);
         
-        // Check for critical hit
-        if (hitEntity.isCriticalHit()) {
-          // Play critical hit sound (using headshot sound for now)
-          const criticalSound = new Audio({
-            uri: 'audio/sfx/headshot.mp3', // Reusing headshot sound for critical hits
-            volume: 0.4,
-            loop: false,
-            playbackRate: 1.2, // Play slightly faster to differentiate from headshot sound
-          });
-          criticalSound.play(this.parent.world, true);
-          
-          // Apply stronger screen shake for critical hits
-          this._applyHeadshotFeedback(0.3);
-        }
+        // Apply screen shake for headshots
+        this._applyHeadshotFeedback(0.2);
       }
     }
   }
@@ -286,12 +269,6 @@ export default abstract class GunEntity extends Entity {
     }
     
     const parentPlayerEntity = this.parent as GamePlayerEntity;
-    
-    // Flash the screen red briefly for headshot feedback
-    parentPlayerEntity.player.ui.sendData({ 
-      type: 'headshot_flash',
-      duration: 200 // milliseconds
-    });
     
     // Apply screen shake
     parentPlayerEntity.player.ui.sendData({ 

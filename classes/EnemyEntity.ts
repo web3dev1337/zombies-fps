@@ -19,8 +19,6 @@ const RETARGET_ACCUMULATOR_THRESHOLD_MS = 5000;
 const PATHFIND_ACCUMULATOR_THRESHOLD_MS = 3000;
 
 export interface EnemyEntityOptions extends EntityOptions {
-  criticalHitChance?: number;      // Chance of a critical hit (0-1)
-  criticalHitMultiplier?: number;  // Damage multiplier for critical hits
   damage: number;
   damageAudioUri?: string;
   health: number;
@@ -35,8 +33,6 @@ export interface EnemyEntityOptions extends EntityOptions {
 }
 
 export default class EnemyEntity extends Entity {
-  public criticalHitChance: number;
-  public criticalHitMultiplier: number;
   public damage: number;
   public health: number;
   public headshotMultiplier: number;
@@ -58,8 +54,6 @@ export default class EnemyEntity extends Entity {
     this.damage = options.damage;
     this.health = options.health;
     this.headshotMultiplier = options.headshotMultiplier ?? 2.5; // Default 2.5x damage for headshots
-    this.criticalHitChance = options.criticalHitChance ?? 0.1; // Default 10% chance for critical hits
-    this.criticalHitMultiplier = options.criticalHitMultiplier ?? 1.5; // Default 1.5x damage for critical hits
     this.jumpHeight = options.jumpHeight ?? 1;
     this.maxHealth = options.health;
     this.preferJumping = options.preferJumping ?? false;
@@ -121,14 +115,6 @@ export default class EnemyEntity extends Entity {
   }
   
   /**
-   * Check if a hit is a critical hit based on random chance
-   * @returns True if the hit is a critical hit, false otherwise
-   */
-  public isCriticalHit(): boolean {
-    return Math.random() < this.criticalHitChance;
-  }
-  
-  /**
    * Apply damage to the enemy
    * @param damage Base damage amount
    * @param fromPlayer Player who caused the damage
@@ -145,9 +131,6 @@ export default class EnemyEntity extends Entity {
       isHeadshot = this.isHeadshot(hitPoint);
     }
     
-    // Check for critical hit
-    const isCritical = this.isCriticalHit();
-    
     // Calculate damage with multipliers
     let actualDamage = damage;
     let damageType = '';
@@ -155,11 +138,6 @@ export default class EnemyEntity extends Entity {
     if (isHeadshot) {
       actualDamage *= this.headshotMultiplier;
       damageType = 'headshot';
-    }
-    
-    if (isCritical) {
-      actualDamage *= this.criticalHitMultiplier;
-      damageType = isHeadshot ? 'critical_headshot' : 'critical';
     }
     
     this.health -= actualDamage;
@@ -173,7 +151,6 @@ export default class EnemyEntity extends Entity {
       // Calculate reward multiplier based on hit type
       let rewardMultiplier = 1;
       if (isHeadshot) rewardMultiplier *= 2;
-      if (isCritical) rewardMultiplier *= 1.5;
       
       const moneyReward = (actualDamage / this.maxHealth) * this.reward * rewardMultiplier;
       fromPlayer.addMoney(moneyReward);
@@ -191,19 +168,9 @@ export default class EnemyEntity extends Entity {
           let message = '';
           let color = '';
           
-          switch (damageType) {
-            case 'headshot':
-              message = `HEADSHOT! +$${Math.floor(moneyReward)}`;
-              color = 'FF0000';
-              break;
-            case 'critical':
-              message = `CRITICAL HIT! +$${Math.floor(moneyReward)}`;
-              color = 'FFA500';
-              break;
-            case 'critical_headshot':
-              message = `CRITICAL HEADSHOT! +$${Math.floor(moneyReward)}`;
-              color = 'FF00FF';
-              break;
+          if (damageType === 'headshot') {
+            message = `HEADSHOT! +$${Math.floor(moneyReward)}`;
+            color = 'FF0000';
           }
           
           if (message) {
@@ -219,22 +186,8 @@ export default class EnemyEntity extends Entity {
 
     // Apply visual feedback based on hit type
     if (this.isSpawned) {
-      if (isCritical) {
-        // Apply orange tint for critical hits
-        this.setTintColor({ r: 255, g: 165, b: 0 });
-        
-        // Apply stronger screen shake for critical hits
-        if (fromPlayer) {
-          fromPlayer.player.ui.sendData({ 
-            type: 'screen_shake',
-            intensity: isHeadshot ? 0.4 : 0.2,
-            duration: 200
-          });
-        }
-      } else {
-        // Apply red tint for normal hits
-        this.setTintColor({ r: 255, g: 0, b: 0 });
-      }
+      // Apply red tint for all hits
+      this.setTintColor({ r: 255, g: 0, b: 0 });
       
       // Reset tint after 75ms
       setTimeout(() => {
@@ -242,6 +195,15 @@ export default class EnemyEntity extends Entity {
           this.setTintColor({ r: 255, g: 255, b: 255 });
         }
       }, 75);
+      
+      // Apply screen shake for headshots
+      if (isHeadshot && fromPlayer) {
+        fromPlayer.player.ui.sendData({ 
+          type: 'screen_shake',
+          intensity: 0.2,
+          duration: 200
+        });
+      }
     }
 
     if (this.health <= 0 && this.isSpawned) {
