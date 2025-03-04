@@ -65,7 +65,7 @@ export default class WallWeaponEntity extends InteractableEntity {
       templateId: 'purchase-label',
       viewDistance: 4,
       state: {
-        name: `${this.name} - ${options.name}`,
+        name: `${this.name}`,
         cost: this.purchasePrice,
       },
     });
