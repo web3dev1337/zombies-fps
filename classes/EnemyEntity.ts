@@ -156,9 +156,9 @@ export default class EnemyEntity extends Entity {
       fromPlayer.addMoney(moneyReward);
       
       // Send appropriate UI notification
-      if (damageType) {
+      if (fromPlayer) {
         fromPlayer.player.ui.sendData({ 
-          type: damageType,
+          type: damageType || 'hit',
           damage: actualDamage,
           reward: moneyReward
         });
