@@ -17,6 +17,7 @@ import type {
 
 import GamePlayerEntity from './GamePlayerEntity';
 import { SceneUIManager } from '../src/managers/scene-ui-manager';
+import { ZombieDeathEffects } from '../src/effects/ZombieDeathEffects';
 import type { HitInfo } from '../src/managers/score-manager';
 
 const RETARGET_ACCUMULATOR_THRESHOLD_MS = 5000;
@@ -265,6 +266,12 @@ export default class EnemyEntity extends Entity {
           type: 'kill',
           reward: killBonus
         });
+      }
+      
+      // Create death effect before despawning
+      if (this.world) {
+        const deathEffects = ZombieDeathEffects.getInstance(this.world);
+        deathEffects.createDeathEffect(this.position, this.modelScale || 1);
       }
       
       this.despawn();
