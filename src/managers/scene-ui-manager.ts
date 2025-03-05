@@ -19,8 +19,8 @@ export class SceneUIManager {
   private static readonly BASE_FONT_SIZE = 48;
 
   // Rise height constants
-  private static readonly NORMAL_RISE_HEIGHT = 400;
-  private static readonly HEADSHOT_RISE_HEIGHT = 600;
+  private static readonly NORMAL_RISE_HEIGHT = 100;
+  private static readonly HEADSHOT_RISE_HEIGHT = 200;
 
   // Glow constants
   private static readonly BASE_GLOW = 5;
