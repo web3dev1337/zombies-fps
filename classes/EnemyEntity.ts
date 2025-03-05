@@ -1,13 +1,18 @@
 import {
   Audio,
   Entity,
-  EntityOptions,
   EntityEvent,
-  EventPayloads,
+  ModelRegistry,
   PathfindingEntityController,
 } from 'hytopia';
 
-import type { QuaternionLike, Vector3Like, World } from 'hytopia';
+import type { 
+  EntityOptions,
+  EventPayloads,
+  QuaternionLike, 
+  Vector3Like, 
+  World 
+} from 'hytopia';
 
 import GamePlayerEntity from './GamePlayerEntity';
 
@@ -18,6 +23,7 @@ export interface EnemyEntityOptions extends EntityOptions {
   damage: number;
   damageAudioUri?: string;
   health: number;
+  headshotMultiplier?: number;     // Damage multiplier for headshots
   idleAudioUri?: string;
   idleAudioReferenceDistance?: number;
   idleAudioVolume?: number;
@@ -30,6 +36,7 @@ export interface EnemyEntityOptions extends EntityOptions {
 export default class EnemyEntity extends Entity {
   public damage: number;
   public health: number;
+  public headshotMultiplier: number;
   public jumpHeight: number;
   public maxHealth: number;
   public preferJumping: boolean;
@@ -47,6 +54,7 @@ export default class EnemyEntity extends Entity {
     super({ ...options, tag: 'enemy' });
     this.damage = options.damage;
     this.health = options.health;
+    this.headshotMultiplier = options.headshotMultiplier ?? 2.5; // Default 2.5x damage for headshots
     this.jumpHeight = options.jumpHeight ?? 1;
     this.maxHealth = options.health;
     this.preferJumping = options.preferJumping ?? false;
@@ -86,12 +94,80 @@ export default class EnemyEntity extends Entity {
     }
   }
 
-  public takeDamage(damage: number, fromPlayer?: GamePlayerEntity) {
+  /**
+   * Determines whether the given hit point is a headshot by retrieving the "head"
+   * node from the underlying model.
+   *
+   * Note: Since Entity does not expose a "model" property, we retrieve the loaded model
+   * via the renderObject (which is attached internally). Ensure your glTF model names the head node "head".
+   */
+  public isHeadshot(hitPoint: Vector3Like): boolean {
+    if (!this.isSpawned) {
+      return false;
+    }
+
+    // Attempt to retrieve the loaded model from the entity.
+    const modelInstance = (this as any).renderObject;
+    if (!modelInstance) {
+      return false;
+    }
+
+    const headNode = modelInstance.getObjectByName('head');
+    if (!headNode) {
+      return false;
+    }
+
+    // Get world position of head node
+    const headPosition = {
+      x: 0,
+      y: 0,
+      z: 0
+    };
+    
+    // Get the world matrix of the head node
+    const worldMatrix = headNode.matrixWorld;
+    headPosition.x = worldMatrix.elements[12];
+    headPosition.y = worldMatrix.elements[13];
+    headPosition.z = worldMatrix.elements[14];
+
+    const scale = this.modelScale ?? 1;
+    const headRadius = 0.3 * scale;
+    const headHeight = 0.4 * scale;
+
+    const dx = Math.abs(hitPoint.x - headPosition.x);
+    const dy = Math.abs(hitPoint.y - headPosition.y);
+    const dz = Math.abs(hitPoint.z - headPosition.z);
+    
+    return dx <= headRadius && dy <= headHeight && dz <= headRadius;
+  }
+  
+  /**
+   * Apply damage to the enemy
+   * @param damage Base damage amount
+   * @param fromPlayer Player who caused the damage
+   * @param isHeadshot Whether this is a headshot
+   * @param hitPoint The position where the enemy was hit
+   */
+  public takeDamage(damage: number, fromPlayer?: GamePlayerEntity, isHeadshot?: boolean, hitPoint?: Vector3Like) {
     if (!this.world) {
       return;
     }
-
-    this.health -= damage;
+    
+    // Check for headshot if not explicitly provided but hit point is available
+    if (isHeadshot === undefined && hitPoint) {
+      isHeadshot = this.isHeadshot(hitPoint);
+    }
+    
+    // Calculate damage with multipliers
+    let actualDamage = damage;
+    let damageType = '';
+    
+    if (isHeadshot) {
+      actualDamage *= this.headshotMultiplier;
+      damageType = 'headshot';
+    }
+    
+    this.health -= actualDamage;
 
     if (this._damageAudio) {
       this._damageAudio.play(this.world, true);
@@ -99,18 +175,79 @@ export default class EnemyEntity extends Entity {
 
     // Give reward based on damage as % of health
     if (fromPlayer) {
-      fromPlayer.addMoney((this.damage / this.maxHealth) * this.reward);
+      // Calculate reward multiplier based on hit type
+      let rewardMultiplier = 1;
+      if (isHeadshot) rewardMultiplier *= 2;
+      
+      const moneyReward = (actualDamage / this.maxHealth) * this.reward * rewardMultiplier;
+      fromPlayer.addMoney(moneyReward);
+      
+      // Send appropriate UI notification
+      if (fromPlayer) {
+        fromPlayer.player.ui.sendData({ 
+          type: damageType || 'hit',
+          damage: actualDamage,
+          reward: moneyReward
+        });
+        
+        // Display hit text in the world
+        if (this.world) {
+          let message = '';
+          let color = '';
+          
+          if (damageType === 'headshot') {
+            message = `HEADSHOT! +$${Math.floor(moneyReward)}`;
+            color = 'FF0000';
+          }
+          
+          if (message) {
+            this.world.chatManager.sendPlayerMessage(
+              fromPlayer.player, 
+              message, 
+              color
+            );
+          }
+        }
+      }
+    }
+
+    // Apply visual feedback based on hit type
+    if (this.isSpawned) {
+      // Apply red tint for all hits
+      this.setTintColor({ r: 255, g: 0, b: 0 });
+      
+      // Reset tint after 75ms
+      setTimeout(() => {
+        if (this.isSpawned) {
+          this.setTintColor({ r: 255, g: 255, b: 255 });
+        }
+      }, 75);
+      
+      // Apply screen shake for headshots
+      if (isHeadshot && fromPlayer) {
+        fromPlayer.player.ui.sendData({ 
+          type: 'screen_shake',
+          intensity: 0.2,
+          duration: 200
+        });
+      }
     }
 
     if (this.health <= 0 && this.isSpawned) {
-      // Enemy is dead, give half reward & despawn
+      // Enemy is dead, give additional reward & despawn
+      if (fromPlayer) {
+        // Bonus for kill
+        const killBonus = this.reward * 0.5;
+        fromPlayer.addMoney(killBonus);
+        
+        // Notify of kill
+        fromPlayer.player.ui.sendData({ 
+          type: 'kill',
+          reward: killBonus
+        });
+      }
+      
       this.despawn();
-    } else {
-      // Apply red tint for 75ms to indicate damage
-      this.setTintColor({ r: 255, g: 0, b: 0 });
-      // Reset tint after 75ms, make sure to check if the entity is still
-      // spawned to prevent setting tint on a despawned entity
-      setTimeout(() => this.isSpawned ? this.setTintColor({ r: 255, g: 255, b: 255 }) : undefined, 75);
     }
   }
 

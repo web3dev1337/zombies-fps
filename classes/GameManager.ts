@@ -11,10 +11,10 @@ import type EnemyEntity from './EnemyEntity';
 import type { Player } from 'hytopia';
 
 const GAME_WAVE_INTERVAL_MS = 30 * 1000; // 30 seconds between waves
-const SLOWEST_SPAWN_INTERVAL_MS = 4000; // Starting spawn rate
-const FASTEST_SPAWN_INTERVAL_MS = 750; // Fastest spawn rate
+const SLOWEST_SPAWN_INTERVAL_MS = 2000; // TEMPORARY: Faster initial spawn rate (Original: 4000)
+const FASTEST_SPAWN_INTERVAL_MS = 500; // TEMPORARY: Faster minimum spawn rate (Original: 750)
 const GAME_START_COUNTDOWN_S = 5; // 5 seconds delay before game starts
-const WAVE_SPAWN_INTERVAL_REDUCTION_MS = 300; // Spawn rate reduction per wave
+const WAVE_SPAWN_INTERVAL_REDUCTION_MS = 400; // TEMPORARY: Faster spawn rate reduction per wave (Original: 300)
 const WAVE_DELAY_MS = 10000; // 10s between waves
 
 export default class GameManager {
@@ -225,7 +225,7 @@ export default class GameManager {
 
     const zombie = new ZombieEntity({
       health: 7 + (this.waveNumber * 0.25),
-      speed: Math.min(6, 2 + this.waveNumber * 0.25), // max speed of 6
+      speed: Math.min(8, 3 + this.waveNumber * 0.4), // TEMPORARY: Faster speed increase per wave (Original: Math.min(6, 2 + this.waveNumber * 0.25))
     });
 
     zombie.spawn(this.world, this._getSpawnPoint());

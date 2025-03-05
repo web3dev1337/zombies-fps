@@ -5,7 +5,7 @@ import type { EnemyEntityOptions } from '../EnemyEntity';
 
 export default class ZombieEntity extends EnemyEntity {
   public constructor(options: Partial<EnemyEntityOptions> = {}) {
-    const speed = options.speed ?? 1 + Math.random() * 4;    
+    const speed = options.speed ?? 3 + Math.random() * 6;    
     const animation = speed > 5 ? 'run' : speed > 3 ? 'walk' : 'crawling';
 
     super({
