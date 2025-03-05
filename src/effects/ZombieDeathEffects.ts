@@ -6,16 +6,16 @@ const ZOMBIE_DEATH_CONFIG = {
         COUNT: 15,
         SCALE: 0.4,
         LIFETIME: 2000,
-        SPEED: 0.5,
+        SPEED: 0.2,
         FORCES: {
-            EXPLOSION_MULTIPLIER: 0.8,
-            UPWARD_MIN: 1,
-            UPWARD_MAX: 2,
-            SPIN_STRENGTH: 6
+            EXPLOSION_MULTIPLIER: 0.2,
+            UPWARD_MIN: 0.5,
+            UPWARD_MAX: 1.0,
+            SPIN_STRENGTH: 3
         }
     },
     POOLING: {
-        POOL_SIZE: 50
+        POOL_SIZE: 500
     }
 };
 
