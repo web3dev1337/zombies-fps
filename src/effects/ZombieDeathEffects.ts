@@ -1,23 +1,30 @@
 import { Entity, RigidBodyType, ColliderShape, World } from 'hytopia';
 import type { Vector3Like } from 'hytopia';
 
-const ZOMBIE_DEATH_CONFIG = {
-    GORE_PARTICLES: {
-        COUNT: 15,
-        SCALE: 0.4,
-        LIFETIME: 2000,
-        SPEED: 0.2,
-        FORCES: {
-            EXPLOSION_MULTIPLIER: 0.2,
-            UPWARD_MIN: 0.5,
-            UPWARD_MAX: 1.0,
-            SPIN_STRENGTH: 3
-        }
-    },
-    POOLING: {
-        POOL_SIZE: 500
-    }
-};
+// Particle appearance
+const PARTICLE_COUNT = 15;
+const PARTICLE_SCALE = 0.4;
+const PARTICLE_LIFETIME_MS = 2000;
+const PARTICLE_MODEL_URI = 'models/items/rotting-flesh.gltf';
+
+// Physics properties
+const PARTICLE_MASS = 0.4;
+const PARTICLE_FRICTION = 0.5;
+const PARTICLE_BOUNCINESS = 0.3;
+const PARTICLE_BASE_SPEED = 0.2;
+const PARTICLE_SPEED_VARIANCE = 0.4; // Will multiply speed by (0.8 to 1.2)
+
+// Force configuration
+const FORCE_UPWARD_MIN = 0.1;
+const FORCE_UPWARD_MAX = 0.2;
+const FORCE_SPIN_STRENGTH = 3;
+
+// Spawn position configuration
+const SPAWN_OFFSET_RANGE = 0.5;  // How far particles can spawn from center
+const SPAWN_HEIGHT_BOOST = 0.5;  // Extra height added to spawn position
+
+// Performance and pooling
+const POOL_SIZE = 500;
 
 export class ZombieDeathEffects {
     private activeParticles: Set<Entity> = new Set();
@@ -40,14 +47,14 @@ export class ZombieDeathEffects {
         if (!this.world) return;
 
         console.log('Creating death effect at position:', position, 'with scale:', scale);
-        const particleCount = Math.floor(ZOMBIE_DEATH_CONFIG.GORE_PARTICLES.COUNT * scale);
+        const particleCount = Math.floor(PARTICLE_COUNT * scale);
         
         for (let i = 0; i < particleCount; i++) {
             const particle = this.getParticleFromPool();
             
-            const offsetX = (Math.random() - 0.5) * 0.5;
-            const offsetY = (Math.random() - 0.5) * 0.5 + 0.5;
-            const offsetZ = (Math.random() - 0.5) * 0.5;
+            const offsetX = (Math.random() - 0.5) * SPAWN_OFFSET_RANGE;
+            const offsetY = (Math.random() - 0.5) * SPAWN_OFFSET_RANGE + SPAWN_HEIGHT_BOOST;
+            const offsetZ = (Math.random() - 0.5) * SPAWN_OFFSET_RANGE;
 
             console.log('Spawning particle', i, 'at offset:', { x: offsetX, y: offsetY, z: offsetZ });
             
@@ -61,16 +68,15 @@ export class ZombieDeathEffects {
 
             if (particle.rawRigidBody) {
                 const angle = Math.random() * Math.PI * 2;
-                const speed = ZOMBIE_DEATH_CONFIG.GORE_PARTICLES.SPEED * (0.8 + Math.random() * 0.4);
+                const speed = PARTICLE_BASE_SPEED * (1 - PARTICLE_SPEED_VARIANCE/2 + Math.random() * PARTICLE_SPEED_VARIANCE);
                 
                 particle.rawRigidBody.applyImpulse({
                     x: Math.cos(angle) * speed,
-                    y: ZOMBIE_DEATH_CONFIG.GORE_PARTICLES.FORCES.UPWARD_MIN + 
-                       Math.random() * (ZOMBIE_DEATH_CONFIG.GORE_PARTICLES.FORCES.UPWARD_MAX),
+                    y: FORCE_UPWARD_MIN + Math.random() * (FORCE_UPWARD_MAX - FORCE_UPWARD_MIN),
                     z: Math.sin(angle) * speed
                 });
 
-                const spin = (Math.random() - 0.5) * ZOMBIE_DEATH_CONFIG.GORE_PARTICLES.FORCES.SPIN_STRENGTH;
+                const spin = (Math.random() - 0.5) * FORCE_SPIN_STRENGTH;
                 particle.rawRigidBody.applyTorqueImpulse({
                     x: spin,
                     y: spin,
@@ -82,7 +88,7 @@ export class ZombieDeathEffects {
                 if (this.activeParticles.has(particle)) {
                     this.returnParticleToPool(particle);
                 }
-            }, ZOMBIE_DEATH_CONFIG.GORE_PARTICLES.LIFETIME);
+            }, PARTICLE_LIFETIME_MS);
         }
     }
 
@@ -92,20 +98,20 @@ export class ZombieDeathEffects {
         if (!particle) {
             particle = new Entity({
                 name: 'ZombieGoreParticle',
-                modelUri: 'models/items/rotting-flesh.gltf',
-                modelScale: ZOMBIE_DEATH_CONFIG.GORE_PARTICLES.SCALE,
+                modelUri: PARTICLE_MODEL_URI,
+                modelScale: PARTICLE_SCALE,
                 rigidBodyOptions: {
                     type: RigidBodyType.DYNAMIC,
                     colliders: [{
                         shape: ColliderShape.BLOCK,
                         halfExtents: {
-                            x: ZOMBIE_DEATH_CONFIG.GORE_PARTICLES.SCALE,
-                            y: ZOMBIE_DEATH_CONFIG.GORE_PARTICLES.SCALE,
-                            z: ZOMBIE_DEATH_CONFIG.GORE_PARTICLES.SCALE
+                            x: PARTICLE_SCALE,
+                            y: PARTICLE_SCALE,
+                            z: PARTICLE_SCALE
                         },
-                        mass: 0.1,
-                        friction: 0.5,
-                        bounciness: 0.3
+                        mass: PARTICLE_MASS,
+                        friction: PARTICLE_FRICTION,
+                        bounciness: PARTICLE_BOUNCINESS
                     }]
                 }
             });
@@ -119,7 +125,7 @@ export class ZombieDeathEffects {
             particle.despawn();
         }
         this.activeParticles.delete(particle);
-        if (this.particlePool.length < ZOMBIE_DEATH_CONFIG.POOLING.POOL_SIZE) {
+        if (this.particlePool.length < POOL_SIZE) {
             this.particlePool.push(particle);
         }
     }
