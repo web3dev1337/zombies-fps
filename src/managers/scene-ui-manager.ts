@@ -12,7 +12,7 @@ export class SceneUIManager {
   // Animation constants
   private static readonly LOW_DAMAGE_THRESHOLD = 30;
   private static readonly BASE_DURATION = 150;
-  private static readonly MAX_DURATION = 500;
+  private static readonly MAX_DURATION = 150;
   private static readonly LOW_DAMAGE_POWER = 0.8;
   private static readonly HIGH_DAMAGE_POWER = 1.4;
   private static readonly LOW_DAMAGE_MULTIPLIER = 3;
@@ -34,6 +34,43 @@ export class SceneUIManager {
   // Glow constants
   private static readonly BASE_GLOW = 5;
   private static readonly GLOW_MULTIPLIER = 15;
+
+  // Hit notification constants
+  private static readonly MIN_LIFETIME = 800;
+  private static readonly MAX_LIFETIME = 1500;
+  private static readonly LIFETIME_LOW_DAMAGE_POWER = 1.2;
+  private static readonly LIFETIME_HIGH_DAMAGE_POWER = 1.4;
+  private static readonly LIFETIME_LOW_MULTIPLIER = 10;
+  private static readonly LIFETIME_HIGH_MULTIPLIER = 12;
+  private static readonly BASE_HIT_SCALE = 0.8;
+  private static readonly HIT_SCALE_DIVISOR = 50;
+  private static readonly HIT_SCALE_MULTIPLIER = 0.4;
+  private static readonly MAX_HIT_SCALE = 1.6;
+
+  // Distance calculation constants
+  private static readonly DISTANCE_DIVISOR = 30;
+  private static readonly DISTANCE_POWER = 1.1;
+  private static readonly MAX_DISTANCE_MULTIPLIER = 0.1;
+
+  // Random offset constants
+  private static readonly RANDOM_OFFSET_RANGE = 0.8;  // ±0.4 units
+  private static readonly VERTICAL_OFFSET = 0.1;
+
+  // Block destruction constants
+  private static readonly BLOCK_SCORE_POWER = 1.4;
+  private static readonly BLOCK_VERTICAL_BASE = 1.5;
+  private static readonly BLOCK_SCORE_DIVISOR = 30;
+  private static readonly MAX_BLOCK_VERTICAL = 1.5;
+
+  // Combo thresholds
+  private static readonly MIN_COMBO_THRESHOLD = 3;
+  private static readonly KILLING_SPREE_THRESHOLD = 5;
+  private static readonly RAMPAGE_THRESHOLD = 7;
+  private static readonly DOMINATING_THRESHOLD = 10;
+  private static readonly UNSTOPPABLE_THRESHOLD = 15;
+
+  // Animation cleanup buffer
+  private static readonly CLEANUP_BUFFER = 100;  // ms to wait after animation before cleanup
 
   private constructor(world: World) {
     this.world = world;
@@ -58,26 +95,23 @@ export class SceneUIManager {
       const dz = worldPosition.z - spawnOrigin.z;
       const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
       
-      distanceMultiplier = 1 + Math.min(Math.pow(distance / 30, 1.1), 0.1);
+      distanceMultiplier = 1 + Math.min(Math.pow(distance / SceneUIManager.DISTANCE_DIVISOR, SceneUIManager.DISTANCE_POWER), SceneUIManager.MAX_DISTANCE_MULTIPLIER);
     }
     
     // Calculate lifetime based on damage (bigger hits last longer)
-    const minLifetime = 800;
-    const maxLifetime = 1500;
-    const duration = minLifetime + Math.min(
-      damage <= 30 
-        ? Math.pow(damage, 1.2) * 10
-        : Math.pow(damage, 1.4) * 12, 
-      maxLifetime - minLifetime
+    const duration = SceneUIManager.MIN_LIFETIME + Math.min(
+      damage <= SceneUIManager.LOW_DAMAGE_THRESHOLD 
+        ? Math.pow(damage, SceneUIManager.LIFETIME_LOW_DAMAGE_POWER) * SceneUIManager.LIFETIME_LOW_MULTIPLIER
+        : Math.pow(damage, SceneUIManager.LIFETIME_HIGH_DAMAGE_POWER) * SceneUIManager.LIFETIME_HIGH_MULTIPLIER, 
+      SceneUIManager.MAX_LIFETIME - SceneUIManager.MIN_LIFETIME
     );
     
     // Calculate scale based on damage (bigger hits = bigger numbers)
-    const baseScale = Math.min(0.8 + (damage / 50) * 0.4, 1.6);
+    const baseScale = Math.min(SceneUIManager.BASE_HIT_SCALE + (damage / SceneUIManager.HIT_SCALE_DIVISOR) * SceneUIManager.HIT_SCALE_MULTIPLIER, SceneUIManager.MAX_HIT_SCALE);
     
     // Random offset for more natural movement
-    const randomOffsetX = (Math.random() - 0.5) * 0.8; // ±0.4 units
-    const randomOffsetZ = (Math.random() - 0.5) * 0.8;
-    const verticalOffset = 0.1; // Start very close to hit point
+    const randomOffsetX = (Math.random() - 0.5) * SceneUIManager.RANDOM_OFFSET_RANGE;
+    const randomOffsetZ = (Math.random() - 0.5) * SceneUIManager.RANDOM_OFFSET_RANGE;
     
     // Calculate color based on damage
     const colorInfo = ColorSystem.getScoreColor(damage);
@@ -94,7 +128,7 @@ export class SceneUIManager {
       templateId: 'damage-notification',
       position: {
         x: worldPosition.x,
-        y: worldPosition.y + verticalOffset,
+        y: worldPosition.y + SceneUIManager.VERTICAL_OFFSET,
         z: worldPosition.z
       },
       state: {
@@ -109,7 +143,7 @@ export class SceneUIManager {
     // Automatically unload after animation completes
     setTimeout(() => {
       damageNotification.unload();
-    }, duration + 100);
+    }, duration + SceneUIManager.CLEANUP_BUFFER);
   }
 
   /**
@@ -128,8 +162,8 @@ export class SceneUIManager {
     const colorInfo = ColorSystem.getScoreColor(roundedScore);
     
     // Random offset for block destruction
-    const randomOffsetX = (Math.random() - 0.5) * 0.8;
-    const randomOffsetZ = (Math.random() - 0.5) * 0.8;
+    const randomOffsetX = (Math.random() - 0.5) * SceneUIManager.RANDOM_OFFSET_RANGE;
+    const randomOffsetZ = (Math.random() - 0.5) * SceneUIManager.RANDOM_OFFSET_RANGE;
     
     player.ui.sendData({
       type: 'blockDestroyed',
@@ -139,9 +173,9 @@ export class SceneUIManager {
         style: this.createDynamicStyle(roundedScore, scale, duration, colorInfo, {
           offsetX: randomOffsetX,
           offsetZ: randomOffsetZ,
-          isHeadshot: false // Block destruction is never a headshot
+          isHeadshot: false
         }),
-        verticalOffset: 1.5 + Math.min(Math.pow(roundedScore / 30, 1.4), 1.5),
+        verticalOffset: SceneUIManager.BLOCK_VERTICAL_BASE + Math.min(Math.pow(roundedScore / SceneUIManager.BLOCK_SCORE_DIVISOR, SceneUIManager.BLOCK_SCORE_POWER), SceneUIManager.MAX_BLOCK_VERTICAL),
         duration
       }
     });
@@ -151,7 +185,7 @@ export class SceneUIManager {
    * Show combo notification
    */
   public showComboNotification(player: Player, combo: number): void {
-    if (combo < 3) return; // Only show for combos of 3 or more
+    if (combo < SceneUIManager.MIN_COMBO_THRESHOLD) return;
     
     const colorInfo = ColorSystem.getComboColor(combo);
     const bonusText = this.getComboText(combo);
@@ -179,7 +213,7 @@ export class SceneUIManager {
     const dz = position.z - origin.z;
     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
     
-    return 1 + Math.min(Math.pow(distance / 30, 1.1), 0.1);
+    return 1 + Math.min(Math.pow(distance / SceneUIManager.DISTANCE_DIVISOR, SceneUIManager.DISTANCE_POWER), SceneUIManager.MAX_DISTANCE_MULTIPLIER);
   }
 
   /**
@@ -208,11 +242,11 @@ export class SceneUIManager {
    * Get descriptive text for combo
    */
   private getComboText(combo: number): string {
-    if (combo >= 15) return 'UNSTOPPABLE!';
-    if (combo >= 10) return 'DOMINATING!';
-    if (combo >= 7) return 'RAMPAGE!';
-    if (combo >= 5) return 'KILLING SPREE!';
-    if (combo >= 3) return 'COMBO!';
+    if (combo >= SceneUIManager.UNSTOPPABLE_THRESHOLD) return 'UNSTOPPABLE!';
+    if (combo >= SceneUIManager.DOMINATING_THRESHOLD) return 'DOMINATING!';
+    if (combo >= SceneUIManager.RAMPAGE_THRESHOLD) return 'RAMPAGE!';
+    if (combo >= SceneUIManager.KILLING_SPREE_THRESHOLD) return 'KILLING SPREE!';
+    if (combo >= SceneUIManager.MIN_COMBO_THRESHOLD) return 'COMBO!';
     return '';
   }
 
