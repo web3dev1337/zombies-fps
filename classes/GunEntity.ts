@@ -150,14 +150,31 @@ export default abstract class GunEntity extends Entity {
     return true;
   }
 
+  private _canReload(): boolean {
+    const hasValidParentInWorld = this.parent?.world != null;
+    const isNotCurrentlyReloading = !this._reloading;
+    const clipIsNotFull = this.ammo < this.maxAmmo;
+
+    if (!hasValidParentInWorld) {
+      return false;
+    }
+    
+    return isNotCurrentlyReloading && clipIsNotFull;
+  }
+
   public reload() {
-    if (!this.parent || !this.parent.world || this._reloading) {
+    if (!this._canReload()) {
+      return;
+    }
+
+    const world = this.parent?.world;
+    if (!world) {
       return;
     }
 
     this.ammo = 0; // set the ammo to 0 to prevent fire while reloading if clip wasn't empty.
     this._reloading = true;
-    this._reloadAudio.play(this.parent.world, true);
+    this._reloadAudio.play(world, true);
     this._updatePlayerUIReload();
 
     setTimeout(() => {
