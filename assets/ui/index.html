@@ -248,6 +248,14 @@
       showPointsPopup(Math.floor(reward), true);
     }
     
+    // Handle normal hit feedback
+    if (type === 'hit') {
+      const { reward } = data;
+      if (reward > 0) {
+        showPointsPopup(Math.floor(reward), false);
+      }
+    }
+    
     // Handle kill feedback
     if (type === 'kill') {
       const { reward } = data;
@@ -388,6 +396,14 @@
     if (type === 'headshot') {
       const { reward } = data;
       showPointsPopup(Math.floor(reward), true);
+    }
+    
+    // Handle normal hit feedback
+    if (type === 'hit') {
+      const { reward } = data;
+      if (reward > 0) {
+        showPointsPopup(Math.floor(reward), false);
+      }
     }
     
     // Handle kill feedback
