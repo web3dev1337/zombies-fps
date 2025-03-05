@@ -353,7 +353,6 @@
       rouletteInterval = setInterval(() => {
         const weapon = possibleWeapons[currentIndex];
         rouletteImage.src = `${CDN_ASSETS_URL}/${weapon.iconUri}`;
-        DEBUG.log('Weapon roulette cycling:', weapon.name);
         rouletteName.textContent = weapon.name;
         currentIndex = (currentIndex + 1) % possibleWeapons.length;
       }, 100);
@@ -431,7 +430,8 @@
     const { type } = data;
 
     if (!type) {
-      return console.warn('No type received for data', data);
+      console.warn('No type received for data', data);
+      return;
     }
     
     // Track kill streak
@@ -459,12 +459,10 @@
       try {
         if (reward) {
           showPointsPopup(Math.floor(reward), false);
-          DEBUG.log('Kill reward:', Math.floor(reward));
         }
         
         // Increment kill streak
         killStreak++;
-        DEBUG.log('Kill streak:', killStreak);
         
         // Clear previous timeout
         if (killStreakTimeout) {
@@ -475,7 +473,6 @@
         killStreakTimeout = setTimeout(() => {
           killStreak = 0;
           updateKillStreakCounter();
-          DEBUG.log('Kill streak reset');
         }, 5000);
         
         // Update kill streak counter
@@ -486,10 +483,9 @@
           // Apply screen shake for kill streaks
           const intensity = 0.1 * Math.min(killStreak, 10);
           applyScreenShake(intensity);
-          DEBUG.log('Applied kill streak screen shake, intensity:', intensity);
         }
       } catch (error) {
-        DEBUG.error('Error in kill handling:', error);
+        console.error('Error in kill handling:', error);
       }
       
       return; // Early return to prevent physics engine spam
