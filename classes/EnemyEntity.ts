@@ -4,6 +4,7 @@ import {
   EntityEvent,
   ModelRegistry,
   PathfindingEntityController,
+  SceneUI,
 } from 'hytopia';
 
 import type { 
@@ -184,6 +185,21 @@ export default class EnemyEntity extends Entity {
       
       // Send appropriate UI notification
       if (fromPlayer) {
+        // Show damage numbers using SceneUI if we have hit point
+        if (hitPoint) {
+          const damageUI = new SceneUI({
+            templateId: 'damage-number',
+            state: {
+              amount: Math.floor(actualDamage),
+              isCritical: isHeadshot
+            },
+            position: hitPoint,
+            offset: { x: 0, y: 0.5, z: 0 } // Offset slightly above hit point
+          });
+          
+          damageUI.load(this.world);
+        }
+
         fromPlayer.player.ui.sendData({ 
           type: damageType || 'hit',
           damage: actualDamage,

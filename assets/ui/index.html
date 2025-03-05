@@ -11,6 +11,7 @@
   </div>
 </div>
 
+<div class="damage-numbers-container"></div>
 <div class="crosshair"></div>
 <div class="vignette"></div>
 <div class="headshot-flash"></div>
@@ -78,12 +79,37 @@
     </div>
 </template>
 
+<template id="damage-number-template">
+  <div class="damage-number">
+    <span class="damage-value"></span>
+  </div>
+</template>
+
 <!-- UI Scripts-->
 <script>
   const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
   let timerInterval;
   let killStreak = 0;
   let killStreakTimeout;
+
+  // Function to show damage numbers
+  function showDamageNumber(damage, x, y, isCritical = false) {
+    const container = document.querySelector('.damage-numbers-container');
+    const damageEl = document.createElement('div');
+    damageEl.className = `damage-number ${isCritical ? 'critical' : ''}`;
+    damageEl.textContent = Math.floor(damage);
+    
+    // Position the damage number at the specified coordinates
+    damageEl.style.left = `${x}px`;
+    damageEl.style.top = `${y}px`;
+    
+    container.appendChild(damageEl);
+    
+    // Remove the element after animation completes
+    setTimeout(() => {
+      damageEl.remove();
+    }, 1000);
+  }
 
   // Function to show points popup - moved to global scope
   function showPointsPopup(amount, isHeadshot) {
@@ -230,6 +256,31 @@
     return clone;
   });
 
+  // Register damage number template
+  hytopia.registerSceneUITemplate('damage-number', (id, onState) => {
+    const template = document.getElementById('damage-number-template');
+    const clone = template.content.cloneNode(true);
+    const damageValue = clone.querySelector('.damage-value');
+    
+    onState(state => {
+      const { amount, isCritical } = state;
+      damageValue.textContent = Math.floor(amount);
+      if (isCritical) {
+        damageValue.classList.add('critical');
+      }
+      
+      // Remove after animation
+      setTimeout(() => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.remove();
+        }
+      }, 1000);
+    });
+    
+    return clone;
+  });
+
   // handle game data ui updates
   hytopia.onData(data => {
     const { type } = data;
@@ -372,6 +423,12 @@
         bossHealthFill.style.width = `${healthPercent}%`;
       }
     }
+
+    // Handle damage numbers
+    if (type === 'damage') {
+      const { amount, x, y, isCritical } = data;
+      showDamageNumber(amount, x, y, isCritical);
+    }
   });
 
   // Handle messages from server
@@ -381,6 +438,12 @@
 
     if (!type) {
       return console.warn('No type received for data', data);
+    }
+    
+    // Handle damage numbers
+    if (type === 'damage') {
+      const { amount, x, y, isCritical } = data;
+      showDamageNumber(amount, x, y, isCritical);
     }
     
     // Track kill streak
@@ -978,5 +1041,58 @@
     font-weight: bold;
     color: #ffffff;
     text-transform: uppercase;
+  }
+
+  .damage-numbers-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .damage-number {
+    position: absolute;
+    transform-origin: center;
+    animation: damageFloat 1s ease-out forwards;
+    pointer-events: none;
+  }
+
+  .damage-value {
+    color: #ffffff;
+    font-family: 'Arial', sans-serif;
+    font-weight: bold;
+    font-size: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+    white-space: nowrap;
+  }
+
+  .damage-value.critical {
+    color: #ff4444;
+    font-size: 24px;
+    text-shadow: 
+      2px 2px 4px rgba(0, 0, 0, 1),
+      0 0 8px rgba(255, 0, 0, 0.8);
+  }
+
+  @keyframes damageFloat {
+    0% {
+      opacity: 0;
+      transform: translateY(0) scale(0.8);
+    }
+    20% {
+      opacity: 1;
+      transform: translateY(-10px) scale(1.2);
+    }
+    80% {
+      opacity: 1;
+      transform: translateY(-30px) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-40px) scale(0.8);
+    }
   }
 </style>
