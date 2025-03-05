@@ -347,13 +347,8 @@
     if (type === 'money') {
       const { money } = data;
       const moneyAmount = Math.floor(money);
-      const moneyDisplay = document.querySelector('.money-display');
       const moneyAmountEl = document.querySelector('.money-amount');
-      
       moneyAmountEl.textContent = moneyAmount;
-      // Adjust width based on number of digits (min 2 digits, max 8 digits)
-      const digits = Math.max(2, Math.min(8, moneyAmount.toString().length));
-      moneyDisplay.style.width = `${10 + (digits * 10)}px`;
     }
 
     if (type === 'boss') {
@@ -615,8 +610,8 @@
     justify-content: flex-end;
     font-weight: bold;
     font-size: 1.6em;
-    min-width: 120px;
-    width: auto;
+    min-width: fit-content;
+    width: fit-content;
     transition: width 0.3s ease;
     white-space: nowrap;
     box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
