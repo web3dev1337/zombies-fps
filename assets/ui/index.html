@@ -42,28 +42,38 @@
 
   @keyframes floatUp {
     0% {
-      transform: translate(-50%, -50%) scale(0.2);
-      opacity: 0;
+      transform: translate(-50%, -50%) scale(var(--initial-scale));
+      opacity: var(--initial-opacity);
     }
+    
+    /* Pop in and start rising */
     15% {
-      transform: translate(-50%, -60%) scale(1.2);
-      opacity: 1;
+      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.2)) scale(var(--pop-scale));
+      opacity: var(--peak-opacity);
     }
+    
+    /* Reach peak height */
     30% {
-      transform: translate(-50%, -80%) scale(1);
-      opacity: 1;
+      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.6)) scale(1);
+      opacity: var(--peak-opacity);
     }
+    
+    /* Hold at peak */
     60% {
-      transform: translate(-50%, -120%) scale(1);
-      opacity: 1;
+      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.8)) scale(1);
+      opacity: var(--peak-opacity);
     }
+    
+    /* Start fading */
     85% {
-      transform: translate(-50%, -140%) scale(0.9);
-      opacity: 0.5;
+      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.9)) scale(var(--final-scale));
+      opacity: var(--fade-opacity);
     }
+    
+    /* Fade out completely */
     100% {
-      transform: translate(-50%, -160%) scale(0.8);
-      opacity: 0;
+      transform: translate(-50%, calc(-50% - var(--rise-height))) scale(var(--final-scale));
+      opacity: var(--final-opacity);
     }
   }
 
@@ -73,7 +83,7 @@
       text-shadow: 0 0 10px #ff0000;
     }
     50% {
-      transform: scale(1.2);
+      transform: scale(var(--pop-scale));
       text-shadow: 0 0 20px #ff0000;
     }
     100% {

@@ -17,19 +17,37 @@ export class SceneUIManager {
 
   // Scale constants
   private static readonly BASE_FONT_SIZE = 48;
+  private static readonly BASE_SCALE = 0.8;
+  private static readonly MAX_SCALE = 1.6;
+  private static readonly HEADSHOT_SCALE_MULTIPLIER = 1.5;
 
   // Rise height constants
-  private static readonly NORMAL_RISE_HEIGHT = 100;
-  private static readonly HEADSHOT_RISE_HEIGHT = 200;
+  private static readonly BASE_RISE_HEIGHT = 40;      // Base height in pixels
+  private static readonly RISE_HEIGHT_MULTIPLIER = 2;  // Multiplier for damage
+  private static readonly MAX_RISE_HEIGHT = 120;      // Maximum rise height
+  private static readonly HEADSHOT_HEIGHT_BONUS = 40;  // Extra height for headshots
+
+  // Animation stages (as percentages of total duration)
+  private static readonly STAGE_APPEAR = 15;     // When number reaches full size
+  private static readonly STAGE_PEAK = 30;       // When number reaches highest point
+  private static readonly STAGE_HOLD = 60;       // How long to hold at peak
+  private static readonly STAGE_FADE_START = 85; // When to start fading out
+
+  // Scale animation values
+  private static readonly INITIAL_SCALE = 0.2;   // Starting scale
+  private static readonly POP_SCALE = 1.2;       // Maximum scale during pop effect
+  private static readonly FINAL_SCALE = 0.8;     // Scale when fading out
+
+  // Opacity stages
+  private static readonly INITIAL_OPACITY = 0;
+  private static readonly PEAK_OPACITY = 1;
+  private static readonly FADE_OPACITY = 0.5;
+  private static readonly FINAL_OPACITY = 0;
 
   // Glow constants
   private static readonly BASE_GLOW = 5;
   private static readonly GLOW_MULTIPLIER = 15;
-
-  private static readonly BASE_HIT_SCALE = 0.8;
-  private static readonly HIT_SCALE_DIVISOR = 50;
-  private static readonly HIT_SCALE_MULTIPLIER = 0.4;
-  private static readonly MAX_HIT_SCALE = 1.6;
+  private static readonly SECONDARY_GLOW_RATIO = 0.5;  // Secondary glow is 50% of primary
 
   // Distance calculation constants
   private static readonly DISTANCE_DIVISOR = 30;
@@ -91,10 +109,10 @@ export class SceneUIManager {
     
     // Enhanced scale calculation based on damage
     const baseScale = Math.min(
-      SceneUIManager.BASE_HIT_SCALE + 
-      (damage / SceneUIManager.HIT_SCALE_DIVISOR) * SceneUIManager.HIT_SCALE_MULTIPLIER * 
+      SceneUIManager.BASE_SCALE + 
+      (damage / SceneUIManager.DISTANCE_DIVISOR) * SceneUIManager.HEADSHOT_SCALE_MULTIPLIER * 
       (isHeadshot ? 1.5 : 1), // Bigger scale for headshots
-      SceneUIManager.MAX_HIT_SCALE
+      SceneUIManager.MAX_SCALE
     );
     
     // Random offset with smoother distribution
@@ -182,23 +200,35 @@ export class SceneUIManager {
   ): string {
     const { offsetX, offsetZ, isHeadshot } = options;
     
-    // Calculate movement parameters
-    const baseRiseHeight = isHeadshot ? SceneUIManager.HEADSHOT_RISE_HEIGHT : SceneUIManager.NORMAL_RISE_HEIGHT;
+    // Calculate rise height based on damage and headshot status
+    const riseHeight = Math.min(
+      SceneUIManager.BASE_RISE_HEIGHT + 
+      (score * SceneUIManager.RISE_HEIGHT_MULTIPLIER) + 
+      (isHeadshot ? SceneUIManager.HEADSHOT_HEIGHT_BONUS : 0),
+      SceneUIManager.MAX_RISE_HEIGHT
+    );
     
-    // Calculate dynamic properties based on score
+    // Calculate glow intensity
     const glowIntensity = SceneUIManager.BASE_GLOW + colorInfo.intensity * SceneUIManager.GLOW_MULTIPLIER;
-    const popScale = 1 + Math.min(Math.pow(score / 50, 1.2), 0.8);
     
-    // Return enhanced style with hardware acceleration and dynamic properties
+    // Return enhanced style with all animation parameters as CSS variables
     return `
       font-size: ${scale * SceneUIManager.BASE_FONT_SIZE}px;
       color: ${colorInfo.main};
       text-shadow: 0 0 ${glowIntensity}px ${colorInfo.glow},
-                   0 0 ${glowIntensity * 0.5}px ${colorInfo.glow};
-      --score-value: ${score};
-      --intensity: ${colorInfo.intensity};
-      --pop-scale: ${popScale};
-      --rise-height: ${baseRiseHeight}px;
+                   0 0 ${glowIntensity * SceneUIManager.SECONDARY_GLOW_RATIO}px ${colorInfo.glow};
+      --rise-height: ${riseHeight}px;
+      --initial-scale: ${SceneUIManager.INITIAL_SCALE};
+      --pop-scale: ${SceneUIManager.POP_SCALE};
+      --final-scale: ${SceneUIManager.FINAL_SCALE};
+      --stage-appear: ${SceneUIManager.STAGE_APPEAR}%;
+      --stage-peak: ${SceneUIManager.STAGE_PEAK}%;
+      --stage-hold: ${SceneUIManager.STAGE_HOLD}%;
+      --stage-fade: ${SceneUIManager.STAGE_FADE_START}%;
+      --initial-opacity: ${SceneUIManager.INITIAL_OPACITY};
+      --peak-opacity: ${SceneUIManager.PEAK_OPACITY};
+      --fade-opacity: ${SceneUIManager.FADE_OPACITY};
+      --final-opacity: ${SceneUIManager.FINAL_OPACITY};
       transform: translateZ(0) translate(${offsetX * 50}px, ${offsetZ * 50}px);
       will-change: transform, opacity;
       animation-duration: ${duration}ms;
