@@ -150,41 +150,6 @@ export class SceneUIManager {
   }
 
   /**
-   * Show block destroyed notification with special effects
-   */
-  public showBlockDestroyedNotification(
-    worldPosition: Vector3Like,
-    score: number,
-    player: Player,
-    spawnOrigin?: Vector3Like
-  ): void {
-    const roundedScore = Math.max(0, Math.round(score));
-    const distanceMultiplier = this.calculateDistanceMultiplier(worldPosition, spawnOrigin);
-    const duration = this.calculateAnimationDuration(roundedScore, distanceMultiplier);
-    const scale = this.calculateScale(roundedScore, distanceMultiplier);
-    const colorInfo = ColorSystem.getScoreColor(roundedScore);
-    
-    // Random offset for block destruction
-    const randomOffsetX = (Math.random() - 0.5) * SceneUIManager.RANDOM_OFFSET_RANGE;
-    const randomOffsetZ = (Math.random() - 0.5) * SceneUIManager.RANDOM_OFFSET_RANGE;
-    
-    player.ui.sendData({
-      type: 'blockDestroyed',
-      data: {
-        score: roundedScore,
-        position: worldPosition,
-        style: this.createDynamicStyle(roundedScore, scale, duration, colorInfo, {
-          offsetX: randomOffsetX,
-          offsetZ: randomOffsetZ,
-          isHeadshot: false
-        }),
-        verticalOffset: SceneUIManager.BLOCK_VERTICAL_BASE + Math.min(Math.pow(roundedScore / SceneUIManager.BLOCK_SCORE_DIVISOR, SceneUIManager.BLOCK_SCORE_POWER), SceneUIManager.MAX_BLOCK_VERTICAL),
-        duration
-      }
-    });
-  }
-
-  /**
    * Show combo notification
    */
   public showComboNotification(player: Player, combo: number): void {
