@@ -79,6 +79,28 @@
       opacity: 0;
     }
   }
+
+  .scene-ui {
+    pointer-events: none;
+    user-select: none;
+    transform-origin: center center;
+    perspective: 1000px;
+    backface-visibility: hidden;
+  }
+
+  .damage-notification {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .damage-text {
+    font-family: var(--display-font);
+    font-weight: bold;
+    text-align: center;
+    white-space: nowrap;
+  }
 </style>
 
 <!-- UI-->
@@ -157,9 +179,9 @@
     </div>
 </template>
 
-<template id="damage-number-template">
-  <div class="damage-number">
-    <span class="damage-value"></span>
+<template id="damage-notification-template">
+  <div class="scene-ui damage-notification">
+    <div class="damage-text"></div>
   </div>
 </template>
 
@@ -378,6 +400,27 @@
           element.remove();
         }
       }, duration || 1000);
+    });
+    
+    return clone;
+  });
+
+  // Register damage notification template
+  hytopia.registerSceneUITemplate('damage-notification', (id, onState) => {
+    const template = document.getElementById('damage-notification-template');
+    const clone = template.content.cloneNode(true);
+    const damageText = clone.querySelector('.damage-text');
+    
+    onState(state => {
+      if (!damageText || !state) return;
+      
+      // Update damage text
+      damageText.textContent = `${state.isCritical ? '💥' : ''}${Math.round(state.amount)}`;
+      
+      // Apply custom style if provided
+      if (state.style) {
+        damageText.style.cssText = state.style;
+      }
     });
     
     return clone;

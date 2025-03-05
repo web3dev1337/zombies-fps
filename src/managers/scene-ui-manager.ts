@@ -58,21 +58,27 @@ export class SceneUIManager {
     // Create animation style
     const dynamicStyle = this.createDynamicStyle(damage, scale, duration, colorInfo);
 
-    // Convert world position to screen coordinates and send to player's UI
-    player.ui.sendData({
-      type: 'damage',
-      data: {
-        amount: Math.floor(damage),
+    // Create and load the Scene UI for damage notification
+    const damageNotification = new SceneUI({
+      templateId: 'damage-notification',
+      position: {
+        x: worldPosition.x,
+        y: worldPosition.y + verticalOffset,
+        z: worldPosition.z
+      },
+      state: {
+        amount: damage,
         isCritical: isHeadshot,
-        style: dynamicStyle,
-        duration,
-        worldPosition: {
-          x: worldPosition.x,
-          y: worldPosition.y + verticalOffset,
-          z: worldPosition.z
-        }
+        style: dynamicStyle
       }
     });
+
+    damageNotification.load(this.world);
+
+    // Automatically unload after animation completes
+    setTimeout(() => {
+      damageNotification.unload();
+    }, duration + 100);
   }
 
   /**
