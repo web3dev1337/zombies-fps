@@ -202,77 +202,19 @@ export class SceneUIManager {
   ): string {
     const { offsetX, offsetZ, isHeadshot } = options;
     
-    // Calculate movement parameters
-    const baseRiseHeight = isHeadshot ? 150 : 100; // Increased rise height significantly
-    const riseHeight = baseRiseHeight * (1 + (score / 100) * 0.5); // Bigger hits fly higher
-    const wobbleFrequency = 3; // Wobbles per second
-    const wobbleAmplitude = 15; // Increased horizontal wobble
-    const pulseFrequency = 5; // Pulses per second
-    const pulseAmplitude = 0.1; // How much it scales during pulse
+    // Calculate movement parameters - using absolute pixel values for more visibility
+    const baseRiseHeight = isHeadshot ? 150 : 100; 
     
-    // More dynamic easing curves
-    const floatTiming = 'cubic-bezier(0.2, 0.8, 0.3, 1)'; // More dramatic rise and fall
-    const fadeOutTiming = 'cubic-bezier(0.4, 0, 0.6, 1)';
-    
+    // Return simplified style focused on color and scale, let CSS animation handle movement
     return `
-      @keyframes scoreFloat {
-        0% {
-          transform: translate3d(0, 0, 0) scale(0.2);
-        }
-        15% { /* Faster initial rise */
-          transform: translate3d(
-            ${wobbleAmplitude * Math.sin(0.15 * wobbleFrequency * Math.PI)}px,
-            ${-riseHeight * 0.4}px,
-            ${offsetZ * 0.3}px
-          ) scale(${scale * (1 + pulseAmplitude)});
-        }
-        40% { /* Peak height with slight forward motion */
-          transform: translate3d(
-            ${wobbleAmplitude * Math.sin(0.4 * wobbleFrequency * Math.PI) + offsetX * 0.5}px,
-            ${-riseHeight}px,
-            ${offsetZ * 0.6}px
-          ) scale(${scale});
-        }
-        80% { /* Slow descent with more horizontal movement */
-          transform: translate3d(
-            ${wobbleAmplitude * Math.sin(0.8 * wobbleFrequency * Math.PI) + offsetX}px,
-            ${-riseHeight * 0.7}px,
-            ${offsetZ}px
-          ) scale(${scale * 0.9});
-        }
-        100% { /* Final position with maximum spread */
-          transform: translate3d(
-            ${wobbleAmplitude * Math.sin(wobbleFrequency * Math.PI) + offsetX * 1.5}px,
-            ${-riseHeight * 0.5}px,
-            ${offsetZ * 1.5}px
-          ) scale(${scale * 0.8});
-        }
-      }
-
-      @keyframes scorePulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(${1 + pulseAmplitude}); }
-      }
-
-      @keyframes scoreFade {
-        0% { opacity: 0; }
-        10% { opacity: 1; }
-        70% { opacity: 1; }
-        100% { opacity: 0; }
-      }
-
-      animation: 
-        scoreFloat ${duration}ms ${floatTiming} forwards,
-        scorePulse ${1000 / pulseFrequency}ms ease-in-out infinite,
-        scoreFade ${duration}ms ${fadeOutTiming} forwards;
-      
-      will-change: transform, opacity;
-      transform-origin: center center;
       font-size: ${scale * 48}px;
       color: ${colorInfo.main};
       text-shadow: 0 0 ${5 + colorInfo.intensity * 15}px ${colorInfo.glow};
       --score-value: ${score};
       --intensity: ${colorInfo.intensity};
+      /* Force hardware acceleration for smoother animations */
+      transform: translateZ(0);
+      will-change: transform;
     `;
   }
 
