@@ -478,33 +478,40 @@
   .game-info {
     display: none;
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: 30px;
+    right: 40px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px 20px;
+    border-radius: 6px;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    transform: scale(1.2);
   }
 
   .game-info div {
     font-family: 'Arial', sans-serif;
-    font-size: 1em;
+    font-size: 1.2em;
     font-weight: bold;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
     color: #ffffff;
     text-align: right;
     margin-bottom: 5px;
+    letter-spacing: 1px;
   }
-
 
   .hud {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: 40px;
+    right: 40px;
     display: flex;
     flex-direction: column;
     z-index: 99;
-    gap: 10px;
+    gap: 15px;
     font-family: 'Arial', sans-serif;
     text-transform: uppercase;
     color: #ffffff;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    transform: scale(1.2);
   }
 
   .vignette {
@@ -523,7 +530,7 @@
   .info-container {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 20px;
   }
 
   .money-container {
@@ -531,7 +538,8 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    margin-right: 10px;
+    margin-right: 15px;
+    transform: scale(1.2);
   }
 
   .points-feed {
@@ -584,56 +592,62 @@
   }
 
   .money-display {
-    height: 30px;
+    height: 40px;
     background: rgba(0, 0, 0, 0.8);
-    border-radius: 4px;
-    padding: 0 15px;
+    border-radius: 6px;
+    padding: 0 20px;
     display: flex;
     align-items: center;
     font-weight: bold;
-    font-size: 1.3em;
-    width: 30px;
+    font-size: 1.6em;
+    width: 40px;
     transition: width 0.3s ease;
     white-space: nowrap;
-    box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+    border: 2px solid rgba(68, 255, 68, 0.3);
   }
 
   .money-symbol {
     color: #44ff44;
-    margin-right: 6px;
-    text-shadow: 0 0 8px rgba(68, 255, 68, 0.7);
+    margin-right: 8px;
+    text-shadow: 0 0 12px rgba(68, 255, 68, 0.8);
+    font-size: 1.2em;
   }
 
   .money-amount {
     color: #ffffff;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
+    font-size: 1.2em;
   }
 
   .health-bar {
-    width: 200px;
-    height: 20px;
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 3px;
+    width: 300px;
+    height: 30px;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 6px;
     overflow: hidden;
-    box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
     position: relative;
+    border: 2px solid rgba(255, 0, 0, 0.3);
   }
 
   .health-bar-fill {
     width: 100%;
     height: 100%;
-    background: linear-gradient(to right, #ff0000, #ff3333);
+    background: linear-gradient(to right, #800000, #ff0000);
     transition: width 0.3s ease;
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.3);
   }
 
   .health-icon {
     position: absolute;
-    left: 5px;
+    left: 10px;
     top: 50%;
     transform: translateY(-50%);
-    height: 16px;
-    width: 16px;
+    height: 24px;
+    width: 24px;
     z-index: 1;
+    filter: drop-shadow(0 0 5px rgba(255, 0, 0, 0.5));
   }
 
   .health-text {
@@ -641,17 +655,23 @@
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    font-size: 0.8em;
+    font-size: 1.1em;
     font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
     z-index: 1;
+    letter-spacing: 1px;
   }
 
   .weapon-info {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 15px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px 15px;
+    border-radius: 6px;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.2);
   }
 
   .weapon-text {
@@ -659,23 +679,29 @@
   }
 
   .weapon-name {
-    font-size: 1em;
+    font-size: 1.3em;
     font-weight: bold;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    color: #ffffff;
+    letter-spacing: 1px;
   }
 
   .weapon-ammo {
-    font-size: 0.8em;
+    font-size: 1.1em;
     opacity: 0.9;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+    color: #ffcc00;
+    letter-spacing: 1px;
   }
 
   .weapon-image {
-    background-color: rgba(0, 0, 0, 0.5);
-    border-radius: 3px;
-    width: 50px;
-    height: 50px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 4px;
+    width: 70px;
+    height: 70px;
     object-fit: contain;
+    padding: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   .crosshair {
