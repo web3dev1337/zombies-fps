@@ -35,30 +35,29 @@ export class SceneUIManager {
       distanceMultiplier = 1 + Math.min(Math.pow(distance / 30, 1.1), 0.1);
     }
     
-    // Calculate animation duration based on damage
-    const duration = 800 + Math.min(
+    // Calculate lifetime based on damage (bigger hits last longer)
+    const minLifetime = 800;
+    const maxLifetime = 1500;
+    const duration = minLifetime + Math.min(
       damage <= 30 
-        ? Math.pow(damage, 1.2) * 3 
-        : Math.pow(damage, 1.8) * 4
-      * distanceMultiplier, 1200);
+        ? Math.pow(damage, 1.2) * 10
+        : Math.pow(damage, 1.4) * 12, 
+      maxLifetime - minLifetime
+    );
     
-    // Calculate scale based on damage
-    const scale = 1 + Math.min(
-      damage <= 30
-        ? Math.pow(damage / 80, 2.4)
-        : Math.pow(damage / 70, 2.4)
-      * distanceMultiplier, 0.8);
+    // Calculate scale based on damage (bigger hits = bigger numbers)
+    const baseScale = Math.min(0.8 + (damage / 50) * 0.4, 1.6);
     
     // Random offset for more natural movement
-    const randomOffsetX = (Math.random() - 0.5) * 0.5; // ±0.25 units
-    const randomOffsetZ = (Math.random() - 0.5) * 0.5;
-    const verticalOffset = 0.2; // Start closer to hit point
+    const randomOffsetX = (Math.random() - 0.5) * 0.8; // ±0.4 units
+    const randomOffsetZ = (Math.random() - 0.5) * 0.8;
+    const verticalOffset = 0.1; // Start very close to hit point
     
     // Calculate color based on damage
     const colorInfo = ColorSystem.getScoreColor(damage);
     
-    // Create animation style with random trajectory
-    const dynamicStyle = this.createDynamicStyle(damage, scale, duration, colorInfo, {
+    // Create animation style with random trajectory and smooth easing
+    const dynamicStyle = this.createDynamicStyle(damage, baseScale, duration, colorInfo, {
       offsetX: randomOffsetX,
       offsetZ: randomOffsetZ,
       isHeadshot
@@ -68,9 +67,9 @@ export class SceneUIManager {
     const damageNotification = new SceneUI({
       templateId: 'damage-notification',
       position: {
-        x: worldPosition.x + randomOffsetX * 0.2, // Small initial offset
+        x: worldPosition.x,
         y: worldPosition.y + verticalOffset,
-        z: worldPosition.z + randomOffsetZ * 0.2
+        z: worldPosition.z
       },
       state: {
         amount: damage,
@@ -102,12 +101,20 @@ export class SceneUIManager {
     const scale = this.calculateScale(roundedScore, distanceMultiplier);
     const colorInfo = ColorSystem.getScoreColor(roundedScore);
     
+    // Random offset for block destruction
+    const randomOffsetX = (Math.random() - 0.5) * 0.8;
+    const randomOffsetZ = (Math.random() - 0.5) * 0.8;
+    
     player.ui.sendData({
       type: 'blockDestroyed',
       data: {
         score: roundedScore,
         position: worldPosition,
-        style: this.createDynamicStyle(roundedScore, scale, duration, colorInfo),
+        style: this.createDynamicStyle(roundedScore, scale, duration, colorInfo, {
+          offsetX: randomOffsetX,
+          offsetZ: randomOffsetZ,
+          isHeadshot: false // Block destruction is never a headshot
+        }),
         verticalOffset: 1.5 + Math.min(Math.pow(roundedScore / 30, 1.4), 1.5),
         duration
       }
@@ -195,55 +202,63 @@ export class SceneUIManager {
   ): string {
     const { offsetX, offsetZ, isHeadshot } = options;
     
-    // Calculate bounce height based on damage and headshot
-    const bounceHeight = isHeadshot ? 2 : 1.2;
-    const finalHeight = isHeadshot ? 3 : 2;
+    // Calculate movement parameters
+    const riseHeight = isHeadshot ? 3 : 2;
+    const wobbleFrequency = 3; // Wobbles per second
+    const wobbleAmplitude = 0.3; // How far it wobbles horizontally
+    const pulseFrequency = 5; // Pulses per second
+    const pulseAmplitude = 0.1; // How much it scales during pulse
     
-    // Create more dynamic movement with cubic bezier
-    const timing = isHeadshot ? 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'cubic-bezier(0.34, 1.56, 0.64, 1)';
+    // Create smooth easing curves
+    const floatTiming = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
+    const fadeOutTiming = 'cubic-bezier(0.4, 0, 0.6, 1)';
     
     return `
-      @keyframes scoreAnimation {
+      @keyframes scoreFloat {
         0% {
-          opacity: 0;
           transform: translate3d(0, 0, 0) scale(0.2);
         }
-        10% {
-          opacity: 1;
+        20% {
           transform: translate3d(
-            ${offsetX * 0.5}px,
-            ${-bounceHeight * scale}px,
-            ${offsetZ * 0.5}px
-          ) scale(${scale * 1.2});
-        }
-        30% {
-          opacity: 1;
-          transform: translate3d(
-            ${offsetX}px,
-            ${-bounceHeight * 1.5 * scale}px,
-            ${offsetZ}px
-          ) scale(${scale});
+            ${wobbleAmplitude * Math.sin(0.2 * wobbleFrequency * Math.PI)}px,
+            ${-riseHeight * 0.3}px,
+            0
+          ) scale(${scale * (1 + pulseAmplitude)});
         }
         60% {
-          opacity: 1;
           transform: translate3d(
-            ${offsetX * 2}px,
-            ${-finalHeight * scale}px,
-            ${offsetZ * 2}px
-          ) scale(${scale * 0.9});
+            ${wobbleAmplitude * Math.sin(0.6 * wobbleFrequency * Math.PI) + offsetX}px,
+            ${-riseHeight * 0.7}px,
+            ${offsetZ}px
+          ) scale(${scale * (1 - pulseAmplitude * 0.5)});
         }
         100% {
-          opacity: 0;
           transform: translate3d(
-            ${offsetX * 3}px,
-            ${-finalHeight * 1.5 * scale}px,
-            ${offsetZ * 3}px
-          ) scale(${scale * 0.7});
+            ${wobbleAmplitude * Math.sin(wobbleFrequency * Math.PI) + offsetX * 2}px,
+            ${-riseHeight}px,
+            ${offsetZ * 2}px
+          ) scale(${scale * 0.8});
         }
       }
-      animation: scoreAnimation ${duration}ms ${timing} forwards;
+
+      @keyframes scorePulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(${1 + pulseAmplitude}); }
+      }
+
+      @keyframes scoreFade {
+        0% { opacity: 0; }
+        20% { opacity: 1; }
+        100% { opacity: 0; }
+      }
+
+      animation: 
+        scoreFloat ${duration}ms ${floatTiming} forwards,
+        scorePulse ${1000 / pulseFrequency}ms ease-in-out infinite,
+        scoreFade ${duration}ms ${fadeOutTiming} forwards;
+      
       will-change: transform, opacity;
-      transform: translateZ(0);
+      transform-origin: center center;
       font-size: ${scale * 48}px;
       color: ${colorInfo.main};
       text-shadow: 0 0 ${5 + colorInfo.intensity * 15}px ${colorInfo.glow};
