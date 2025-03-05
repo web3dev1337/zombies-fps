@@ -193,7 +193,7 @@ export default class EnemyEntity extends Entity {
           actualDamage,
           fromPlayer.player,
           isHeadshot,
-          this.spawnOrigin
+          this.position
         );
 
         fromPlayer.player.ui.sendData({ 
