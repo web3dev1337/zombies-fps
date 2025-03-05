@@ -54,19 +54,19 @@
     
     /* Reach peak height */
     30% {
-      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.6)) scale(1);
+      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.3)) scale(1);
       opacity: var(--peak-opacity);
     }
     
     /* Hold at peak */
     60% {
-      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.8)) scale(1);
+      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.4)) scale(1);
       opacity: var(--peak-opacity);
     }
     
     /* Start fading */
     85% {
-      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.9)) scale(var(--final-scale));
+      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.5)) scale(var(--final-scale));
       opacity: var(--fade-opacity);
     }
     

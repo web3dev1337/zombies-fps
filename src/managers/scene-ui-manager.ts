@@ -21,11 +21,11 @@ export class SceneUIManager {
   private static readonly MAX_SCALE = 1.6;
   private static readonly HEADSHOT_SCALE_MULTIPLIER = 1.5;
 
-  // Rise height constants
-  private static readonly BASE_RISE_HEIGHT = 40;      // Base height in pixels
-  private static readonly RISE_HEIGHT_MULTIPLIER = 2;  // Multiplier for damage
-  private static readonly MAX_RISE_HEIGHT = 120;      // Maximum rise height
-  private static readonly HEADSHOT_HEIGHT_BONUS = 40;  // Extra height for headshots
+  // Rise height constants - adjusted to work with CSS multipliers
+  private static readonly BASE_RISE_HEIGHT = 5;        // Base height in pixels
+  private static readonly RISE_HEIGHT_MULTIPLIER = 0.5; // Each point of damage adds 0.5px
+  private static readonly MAX_RISE_HEIGHT = 10;         // Maximum rise height
+  private static readonly HEADSHOT_HEIGHT_BONUS = 10;   // Extra height for headshots
 
   // Animation stages (as percentages of total duration)
   private static readonly STAGE_APPEAR = 15;     // When number reaches full size
