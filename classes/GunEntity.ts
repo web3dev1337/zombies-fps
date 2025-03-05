@@ -151,12 +151,15 @@ export default abstract class GunEntity extends Entity {
   }
 
   private _canReload(): boolean {
-    if (!this.parent?.world) {
+    const hasValidParentInWorld = this.parent?.world != null;
+    const isNotCurrentlyReloading = !this._reloading;
+    const clipIsNotFull = this.ammo < this.maxAmmo;
+
+    if (!hasValidParentInWorld) {
       return false;
     }
     
-    return !this._reloading 
-      && this.ammo < this.maxAmmo;
+    return isNotCurrentlyReloading && clipIsNotFull;
   }
 
   public reload() {
