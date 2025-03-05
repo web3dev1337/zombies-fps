@@ -36,7 +36,7 @@ export class SceneUIManager {
     }
     
     // Calculate animation duration based on damage
-    const duration = 500 + Math.min(
+    const duration = 800 + Math.min(
       damage <= 30 
         ? Math.pow(damage, 1.2) * 3 
         : Math.pow(damage, 1.8) * 4
@@ -49,22 +49,28 @@ export class SceneUIManager {
         : Math.pow(damage / 70, 2.4)
       * distanceMultiplier, 0.8);
     
-    // Calculate vertical offset based on damage
-    const verticalOffset = 1.5 + Math.min(Math.pow(damage / 30, 1.4), 1.5);
-
+    // Random offset for more natural movement
+    const randomOffsetX = (Math.random() - 0.5) * 0.5; // ±0.25 units
+    const randomOffsetZ = (Math.random() - 0.5) * 0.5;
+    const verticalOffset = 0.2; // Start closer to hit point
+    
     // Calculate color based on damage
     const colorInfo = ColorSystem.getScoreColor(damage);
     
-    // Create animation style
-    const dynamicStyle = this.createDynamicStyle(damage, scale, duration, colorInfo);
+    // Create animation style with random trajectory
+    const dynamicStyle = this.createDynamicStyle(damage, scale, duration, colorInfo, {
+      offsetX: randomOffsetX,
+      offsetZ: randomOffsetZ,
+      isHeadshot
+    });
 
     // Create and load the Scene UI for damage notification
     const damageNotification = new SceneUI({
       templateId: 'damage-notification',
       position: {
-        x: worldPosition.x,
+        x: worldPosition.x + randomOffsetX * 0.2, // Small initial offset
         y: worldPosition.y + verticalOffset,
-        z: worldPosition.z
+        z: worldPosition.z + randomOffsetZ * 0.2
       },
       state: {
         amount: damage,
@@ -180,35 +186,62 @@ export class SceneUIManager {
   /**
    * Create dynamic CSS style for damage numbers
    */
-  private createDynamicStyle(score: number, scale: number, duration: number, colorInfo: ColorInfo): string {
+  private createDynamicStyle(
+    score: number, 
+    scale: number, 
+    duration: number, 
+    colorInfo: ColorInfo,
+    options: { offsetX: number; offsetZ: number; isHeadshot: boolean }
+  ): string {
+    const { offsetX, offsetZ, isHeadshot } = options;
+    
+    // Calculate bounce height based on damage and headshot
+    const bounceHeight = isHeadshot ? 2 : 1.2;
+    const finalHeight = isHeadshot ? 3 : 2;
+    
+    // Create more dynamic movement with cubic bezier
+    const timing = isHeadshot ? 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'cubic-bezier(0.34, 1.56, 0.64, 1)';
+    
     return `
       @keyframes scoreAnimation {
         0% {
           opacity: 0;
-          transform: translateY(0) scale(0.2);
+          transform: translate3d(0, 0, 0) scale(0.2);
         }
-        15% {
+        10% {
           opacity: 1;
-          transform: translateY(-${8 * scale}px) scale(${scale * 0.9});
+          transform: translate3d(
+            ${offsetX * 0.5}px,
+            ${-bounceHeight * scale}px,
+            ${offsetZ * 0.5}px
+          ) scale(${scale * 1.2});
         }
         30% {
           opacity: 1;
-          transform: translateY(-${20 * scale}px) scale(${scale});
+          transform: translate3d(
+            ${offsetX}px,
+            ${-bounceHeight * 1.5 * scale}px,
+            ${offsetZ}px
+          ) scale(${scale});
         }
         60% {
           opacity: 1;
-          transform: translateY(-${35 * scale}px) scale(${scale});
-        }
-        85% {
-          opacity: 0.5;
-          transform: translateY(-${45 * scale}px) scale(${scale * 0.9});
+          transform: translate3d(
+            ${offsetX * 2}px,
+            ${-finalHeight * scale}px,
+            ${offsetZ * 2}px
+          ) scale(${scale * 0.9});
         }
         100% {
           opacity: 0;
-          transform: translateY(-${50 * scale}px) scale(${scale * 0.8});
+          transform: translate3d(
+            ${offsetX * 3}px,
+            ${-finalHeight * 1.5 * scale}px,
+            ${offsetZ * 3}px
+          ) scale(${scale * 0.7});
         }
       }
-      animation: scoreAnimation ${duration}ms ease-out forwards;
+      animation: scoreAnimation ${duration}ms ${timing} forwards;
       will-change: transform, opacity;
       transform: translateZ(0);
       font-size: ${scale * 48}px;
