@@ -10,19 +10,12 @@ export class SceneUIManager {
   private world: World;
 
   // Animation constants
-  private static readonly LOW_DAMAGE_THRESHOLD = 30;
   private static readonly BASE_DURATION = 250;  // Base duration for all animations
   private static readonly MAX_DURATION = 400;   // Maximum duration for any animation
   private static readonly DAMAGE_POWER = 0.8;   // How much damage affects duration
   private static readonly DAMAGE_MULTIPLIER = 2; // Base multiplier for damage->duration conversion
 
   // Scale constants
-  private static readonly BASE_SCALE = 1;
-  private static readonly MAX_SCALE_INCREASE = 0.8;
-  private static readonly LOW_DAMAGE_SCALE_DIVISOR = 60;
-  private static readonly HIGH_DAMAGE_SCALE_DIVISOR = 70;
-  private static readonly LOW_DAMAGE_SCALE_POWER = 1.8;
-  private static readonly HIGH_DAMAGE_SCALE_POWER = 2.4;
   private static readonly BASE_FONT_SIZE = 48;
 
   // Rise height constants
@@ -157,31 +150,7 @@ export class SceneUIManager {
     });
   }
 
-  /**
-   * Calculate distance multiplier for effects
-   */
-  private calculateDistanceMultiplier(position: Vector3Like, origin?: Vector3Like): number {
-    if (!origin) return 1;
-    
-    const dx = position.x - origin.x;
-    const dy = position.y - origin.y;
-    const dz = position.z - origin.z;
-    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    
-    return 1 + Math.min(Math.pow(distance / SceneUIManager.DISTANCE_DIVISOR, SceneUIManager.DISTANCE_POWER), SceneUIManager.MAX_DISTANCE_MULTIPLIER);
-  }
-
-  /**
-   * Calculate scale based on score
-   */
-  private calculateScale(score: number, distanceMultiplier: number): number {
-    return SceneUIManager.BASE_SCALE + Math.min(
-      score <= SceneUIManager.LOW_DAMAGE_THRESHOLD
-        ? Math.pow(score / SceneUIManager.LOW_DAMAGE_SCALE_DIVISOR, SceneUIManager.LOW_DAMAGE_SCALE_POWER)
-        : Math.pow(score / SceneUIManager.HIGH_DAMAGE_SCALE_DIVISOR, SceneUIManager.HIGH_DAMAGE_SCALE_POWER)
-      * distanceMultiplier, SceneUIManager.MAX_SCALE_INCREASE);
-  }
-
+ 
   /**
    * Get descriptive text for combo
    */
