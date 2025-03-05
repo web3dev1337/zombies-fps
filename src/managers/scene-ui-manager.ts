@@ -160,11 +160,11 @@ export class SceneUIManager {
    * Calculate animation duration based on score
    */
   private calculateAnimationDuration(score: number, distanceMultiplier: number): number {
-    return 500 + Math.min(
+    return 300 + Math.min(  // Reduced base duration for faster initial movement
       score <= 30 
-        ? Math.pow(score, 1.1) * 2  // Faster for low damage
-        : Math.pow(score, 1.6) * 4  // Slightly slower for high damage
-      * distanceMultiplier, 1200);
+        ? Math.pow(score, 0.8) * 3  // Much faster for low damage
+        : Math.pow(score, 1.4) * 4  // A bit faster for high damage
+      * distanceMultiplier, 1000);  // Reduced max duration
   }
 
   /**
@@ -173,7 +173,7 @@ export class SceneUIManager {
   private calculateScale(score: number, distanceMultiplier: number): number {
     return 1 + Math.min(
       score <= 30
-        ? Math.pow(score / 60, 2.2)  // Slightly bouncier for low damage
+        ? Math.pow(score / 60, 1.8)  // Less exponential curve for quicker initial scale
         : Math.pow(score / 70, 2.4)  // Keep same scale for high damage
       * distanceMultiplier, 0.8);
   }
@@ -203,7 +203,7 @@ export class SceneUIManager {
     const { offsetX, offsetZ, isHeadshot } = options;
     
     // Calculate movement parameters - using absolute pixel values for more visibility
-    const baseRiseHeight = isHeadshot ? 150 : 100; 
+    const baseRiseHeight = isHeadshot ? 180 : 120;  // Slightly increased rise height
     
     // Return simplified style focused on color and scale, let CSS animation handle movement
     return `
