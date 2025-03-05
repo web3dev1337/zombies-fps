@@ -14,8 +14,6 @@
 <div class="crosshair"></div>
 <div class="vignette"></div>
 <div class="headshot-flash"></div>
-<div class="hit-text">HEADSHOT!</div>
-<div class="kill-text">KILL!</div>
 <div class="wave-announcement">Wave <span class="wave-number"></span></div>
 <div class="killstreak-counter">
   <span class="killstreak-number">0</span>
@@ -37,9 +35,12 @@
   </div>
   
   <div class="info-container">
-    <div class="money-display">
-      <span class="money-symbol">$</span>
-      <span class="money-amount">0</span>
+    <div class="money-container">
+      <div class="money-display">
+        <span class="money-symbol">$</span>
+        <span class="money-amount">0</span>
+      </div>
+      <div class="points-feed"></div>
     </div>
     <div class="health-bar">
       <div class="health-bar-fill"></div>
@@ -168,27 +169,14 @@
     
     // Handle hit feedback (headshot)
     if (type === 'headshot') {
-      const { reward, damage } = data;
-      const hitText = document.querySelector('.hit-text');
-      
-      // Show hit text with reward
-      hitText.textContent = `HEADSHOT! +$${Math.floor(reward)}`;
-      hitText.style.color = '#ff0000';
-      hitText.classList.add('show');
-      
-      // Show red flash
-      showFlash('headshot-flash', 200);
-      
-      // Hide after animation
-      setTimeout(() => {
-        hitText.classList.remove('show');
-      }, 1500);
+      const { reward } = data;
+      showPointsPopup(Math.floor(reward), true);
     }
     
     // Handle kill feedback
     if (type === 'kill') {
       const { reward } = data;
-      const killText = document.querySelector('.kill-text');
+      showPointsPopup(Math.floor(reward), false);
       
       // Increment kill streak
       killStreak++;
@@ -206,15 +194,6 @@
       
       // Update kill streak counter
       updateKillStreakCounter();
-      
-      // Show kill text with reward
-      killText.textContent = `KILL! +$${Math.floor(reward)}`;
-      killText.classList.add('show');
-      
-      // Hide after animation
-      setTimeout(() => {
-        killText.classList.remove('show');
-      }, 1500);
       
       // Apply special effects for kill streaks
       if (killStreak >= 3) {
@@ -374,6 +353,69 @@
       announcement.classList.remove('show');
     }, 3000);
   }
+
+  // Handle messages from server
+  window.addEventListener('message', event => {
+    const data = event.data;
+    const type = data?.type;
+
+    if (!type) {
+      return console.warn('No type received for data', data);
+    }
+    
+    // Track kill streak
+    let killStreak = 0;
+    let killStreakTimeout;
+    
+    // Handle hit feedback (headshot)
+    if (type === 'headshot') {
+      const { reward } = data;
+      showPointsPopup(Math.floor(reward), true);
+    }
+    
+    // Handle kill feedback
+    if (type === 'kill') {
+      const { reward } = data;
+      showPointsPopup(Math.floor(reward), false);
+      
+      // Increment kill streak
+      killStreak++;
+      
+      // Clear previous timeout
+      if (killStreakTimeout) {
+        clearTimeout(killStreakTimeout);
+      }
+      
+      // Reset kill streak after 5 seconds of no kills
+      killStreakTimeout = setTimeout(() => {
+        killStreak = 0;
+        updateKillStreakCounter();
+      }, 5000);
+      
+      // Update kill streak counter
+      updateKillStreakCounter();
+      
+      // Apply special effects for kill streaks
+      if (killStreak >= 3) {
+        // Apply screen shake for kill streaks
+        applyScreenShake(0.1 * Math.min(killStreak, 10));
+      }
+    }
+
+    // Function to show points popup
+    function showPointsPopup(amount, isHeadshot) {
+      const pointsFeed = document.querySelector('.points-feed');
+      const popup = document.createElement('div');
+      popup.className = `points-popup ${isHeadshot ? 'headshot' : ''}`;
+      popup.textContent = `+${amount}`;
+      pointsFeed.appendChild(popup);
+      
+      // Remove the popup element after animation
+      setTimeout(() => {
+        popup.remove();
+      }, 1000);
+    }
+  });
 </script>
 
 <!-- UI Styles -->
@@ -465,23 +507,84 @@
     gap: 10px;
   }
 
+  .money-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .points-feed {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .points-popup {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    color: #44ff44;
+    font-family: 'Arial', sans-serif;
+    font-weight: bold;
+    font-size: 16px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    opacity: 0;
+    transform: translateY(20px);
+    animation: pointsPopup 1s ease-out forwards;
+  }
+
+  .points-popup.headshot {
+    color: #ff4444;
+  }
+
+  @keyframes pointsPopup {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    20% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    80% {
+      opacity: 1;
+      transform: translateY(-20px);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-40px);
+    }
+  }
+
   .money-display {
-    height: 20px;
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 3px;
+    height: 24px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 4px;
     padding: 0 10px;
     display: flex;
     align-items: center;
     font-weight: bold;
-    font-size: 0.9em;
-    width: 30px; /* Initial width for 2 digits */
+    font-size: 1.1em;
+    width: 30px;
     transition: width 0.3s ease;
     white-space: nowrap;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
   }
 
   .money-symbol {
     color: #44ff44;
     margin-right: 4px;
+    text-shadow: 0 0 5px rgba(68, 255, 68, 0.5);
+  }
+
+  .money-amount {
+    color: #ffffff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   }
 
   .health-bar {
@@ -716,7 +819,8 @@
     transform: translate(-50%, -50%) scale(0);
     font-family: "Creepster", serif;
     font-weight: 400;
-    font-style: normal;    font-size: 72px;
+    font-style: normal;
+    font-size: 72px;
     color: #ff0000;
     text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
     opacity: 0;
@@ -742,44 +846,36 @@
   .headshot-flash.show {
     opacity: 1;
   }
-  
-  .hit-text {
-    position: fixed;
-    top: 40%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0);
-    font-family: "Creepster", serif;
-    font-weight: 400;
-    font-size: 64px;
-    color: #ff0000;
-    text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
-    opacity: 0;
-    pointer-events: none;
-    z-index: 1002;
-  }
-  
-  .kill-text {
-    position: fixed;
-    top: 45%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0);
-    font-family: "Creepster", serif;
-    font-weight: 400;
-    font-size: 72px;
-    color: #44ff44;
-    text-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
-    opacity: 0;
-    pointer-events: none;
-    z-index: 1002;
-  }
-  
-  .hit-text.show,
-  .kill-text.show {
-    opacity: 1;
+
+  .wave-announcement.show {
     transform: translate(-50%, -50%) scale(1);
-    animation: textPulse 1.5s ease-out forwards;
+    opacity: 1;
+    animation: pulseAndFade 3s ease-out forwards;
   }
-  
+
+  @keyframes pulseAndFade {
+    0% {
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 0;
+    }
+    20% {
+      transform: translate(-50%, -50%) scale(1.2);
+      opacity: 1;
+    }
+    40% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+    80% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(0.8);
+      opacity: 0;
+    }
+  }
+
   .killstreak-counter {
     position: fixed;
     top: 100px;
@@ -813,57 +909,5 @@
     font-weight: bold;
     color: #ffffff;
     text-transform: uppercase;
-  }
-  
-  @keyframes textPulse {
-    0% {
-      transform: translate(-50%, -50%) scale(0);
-      opacity: 0;
-    }
-    20% {
-      transform: translate(-50%, -50%) scale(1.3);
-      opacity: 1;
-    }
-    40% {
-      transform: translate(-50%, -50%) scale(1.1);
-      opacity: 1;
-    }
-    80% {
-      transform: translate(-50%, -50%) scale(1.1);
-      opacity: 1;
-    }
-    100% {
-      transform: translate(-50%, -50%) scale(0.8);
-      opacity: 0;
-    }
-  }
-
-  .wave-announcement.show {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-    animation: pulseAndFade 3s ease-out forwards;
-  }
-  
-  @keyframes pulseAndFade {
-    0% {
-      transform: translate(-50%, -50%) scale(0);
-      opacity: 0;
-    }
-    20% {
-      transform: translate(-50%, -50%) scale(1.2);
-      opacity: 1;
-    }
-    40% {
-      transform: translate(-50%, -50%) scale(1);
-      opacity: 1;
-    }
-    80% {
-      transform: translate(-50%, -50%) scale(1);
-      opacity: 1;
-    }
-    100% {
-      transform: translate(-50%, -50%) scale(0.8);
-      opacity: 0;
-    }
   }
 </style>
