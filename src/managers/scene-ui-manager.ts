@@ -11,8 +11,8 @@ export class SceneUIManager {
 
   // Animation constants
   private static readonly LOW_DAMAGE_THRESHOLD = 30;
-  private static readonly BASE_DURATION = 300;
-  private static readonly MAX_DURATION = 1000;
+  private static readonly BASE_DURATION = 150;
+  private static readonly MAX_DURATION = 500;
   private static readonly LOW_DAMAGE_POWER = 0.8;
   private static readonly HIGH_DAMAGE_POWER = 1.4;
   private static readonly LOW_DAMAGE_MULTIPLIER = 3;
@@ -28,8 +28,8 @@ export class SceneUIManager {
   private static readonly BASE_FONT_SIZE = 48;
 
   // Rise height constants
-  private static readonly NORMAL_RISE_HEIGHT = 120;
-  private static readonly HEADSHOT_RISE_HEIGHT = 180;
+  private static readonly NORMAL_RISE_HEIGHT = 250;
+  private static readonly HEADSHOT_RISE_HEIGHT = 300;
 
   // Glow constants
   private static readonly BASE_GLOW = 5;
