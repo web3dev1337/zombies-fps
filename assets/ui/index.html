@@ -511,7 +511,7 @@
   .hud {
     position: fixed;
     bottom: 40px;
-    right: 40px;
+    right: 20px;
     display: flex;
     flex-direction: column;
     z-index: 99;
@@ -683,10 +683,15 @@
     border-radius: 6px;
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
     border: 2px solid rgba(255, 255, 255, 0.2);
+    width: fit-content;
+    min-width: fit-content;
+    transition: width 0.3s ease;
   }
 
   .weapon-text {
     text-align: right;
+    width: 120px;
+    min-width: 120px;
   }
 
   .weapon-name {
@@ -703,6 +708,7 @@
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
     color: #ffcc00;
     letter-spacing: 1px;
+    white-space: nowrap;
   }
 
   .weapon-image {
