@@ -17,6 +17,7 @@ import type {
 
 import GamePlayerEntity from './GamePlayerEntity';
 import { SceneUIManager } from '../src/managers/scene-ui-manager';
+import type { HitInfo } from '../src/managers/score-manager';
 
 const RETARGET_ACCUMULATOR_THRESHOLD_MS = 5000;
 const PATHFIND_ACCUMULATOR_THRESHOLD_MS = 3000;
@@ -186,16 +187,23 @@ export default class EnemyEntity extends Entity {
       
       // Send appropriate UI notification
       if (fromPlayer && hitPoint) {
-        // Show damage numbers using SceneUIManager
+        // Create hit info for score calculation and display
+        const hitInfo: HitInfo = {
+          playerId: fromPlayer.player.id,
+          damage: actualDamage,
+          distance: this.getDistanceFrom(fromPlayer),
+          targetSpeed: this.getSpeed(),
+          isHeadshot: !!isHeadshot,
+          isKill: this.health <= 0,
+          hitPosition: hitPoint,
+          spawnOrigin: this.position
+        };
+        
+        // Process hit using SceneUIManager
         const sceneUIManager = SceneUIManager.getInstance(this.world);
-        sceneUIManager.showHitNotification(
-          hitPoint,
-          actualDamage,
-          fromPlayer.player,
-          isHeadshot,
-          this.position
-        );
+        sceneUIManager.processHit(hitInfo);
 
+        // Send legacy data for UI compatibility
         fromPlayer.player.ui.sendData({ 
           type: damageType || 'hit',
           damage: actualDamage,
@@ -352,5 +360,28 @@ export default class EnemyEntity extends Entity {
     };
 
     return Math.sqrt(targetDistance.x * targetDistance.x + targetDistance.y * targetDistance.y + targetDistance.z * targetDistance.z);
+  }
+
+  /**
+   * Get distance from another entity
+   */
+  private getDistanceFrom(entity: Entity): number {
+    if (!entity.position || !this.position) return 0;
+    
+    const dx = this.position.x - entity.position.x;
+    const dy = this.position.y - entity.position.y;
+    const dz = this.position.z - entity.position.z;
+    
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+  
+  /**
+   * Get current speed of the entity
+   */
+  private getSpeed(): number {
+    if (!this.rawRigidBody) return 0;
+    
+    const velocity = this.rawRigidBody.getLinearVelocity();
+    return Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z);
   }
 }

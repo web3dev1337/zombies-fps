@@ -1,4 +1,9 @@
-import { World, Vector3Like, Player, SceneUI } from 'hytopia';
+import { World, Player, SceneUI } from 'hytopia';
+import type { Vector3Like } from 'hytopia';
+import { ColorSystem } from './color-system';
+import type { ColorInfo } from './color-system';
+import { ScoreManager } from './score-manager';
+import type { HitInfo } from './score-manager';
 
 export class SceneUIManager {
   private static instance: SceneUIManager;
@@ -15,6 +20,9 @@ export class SceneUIManager {
     return SceneUIManager.instance;
   }
 
+  /**
+   * Show hit notification at the hit position
+   */
   public showHitNotification(worldPosition: Vector3Like, damage: number, player: Player, isHeadshot: boolean = false, spawnOrigin?: Vector3Like): void {
     // Calculate distance multiplier if spawn origin is available
     let distanceMultiplier = 1;
@@ -45,82 +53,128 @@ export class SceneUIManager {
     const verticalOffset = 1.5 + Math.min(Math.pow(damage / 30, 1.4), 1.5);
 
     // Calculate color based on damage
-    const colorInfo = this.getScoreColor(damage);
+    const colorInfo = ColorSystem.getScoreColor(damage);
     
     // Create animation style
     const dynamicStyle = this.createDynamicStyle(damage, scale, duration, colorInfo);
 
-    // Create and show the damage number
-    const damageUI = new SceneUI({
-      templateId: 'damage-number',
-      position: {
-        x: worldPosition.x,
-        y: worldPosition.y + verticalOffset,
-        z: worldPosition.z
-      },
-      state: {
+    // Convert world position to screen coordinates and send to player's UI
+    player.ui.sendData({
+      type: 'damage',
+      data: {
         amount: Math.floor(damage),
         isCritical: isHeadshot,
         style: dynamicStyle,
+        duration,
+        worldPosition: {
+          x: worldPosition.x,
+          y: worldPosition.y + verticalOffset,
+          z: worldPosition.z
+        }
+      }
+    });
+  }
+
+  /**
+   * Show block destroyed notification with special effects
+   */
+  public showBlockDestroyedNotification(
+    worldPosition: Vector3Like,
+    score: number,
+    player: Player,
+    spawnOrigin?: Vector3Like
+  ): void {
+    const roundedScore = Math.max(0, Math.round(score));
+    const distanceMultiplier = this.calculateDistanceMultiplier(worldPosition, spawnOrigin);
+    const duration = this.calculateAnimationDuration(roundedScore, distanceMultiplier);
+    const scale = this.calculateScale(roundedScore, distanceMultiplier);
+    const colorInfo = ColorSystem.getScoreColor(roundedScore);
+    
+    player.ui.sendData({
+      type: 'blockDestroyed',
+      data: {
+        score: roundedScore,
+        position: worldPosition,
+        style: this.createDynamicStyle(roundedScore, scale, duration, colorInfo),
+        verticalOffset: 1.5 + Math.min(Math.pow(roundedScore / 30, 1.4), 1.5),
         duration
       }
     });
-
-    damageUI.load(this.world);
-
-    // Clean up after animation
-    setTimeout(() => {
-      damageUI.unload();
-    }, duration);
   }
 
-  private getScoreColor(score: number): { main: string, glow: string, intensity: number } {
-    const colors = [
-      { score: 0, color: '#FFFFFF', glow: '#CCCCCC', intensity: 0.3 },
-      { score: 15, color: '#FFFF00', glow: '#CCCC00', intensity: 0.6 },
-      { score: 25, color: '#FFA500', glow: '#CC8400', intensity: 0.9 },
-      { score: 50, color: '#FF0000', glow: '#CC0000', intensity: 1.2 },
-      { score: 150, color: '#FF00FF', glow: '#FFFFFF', intensity: 1.5 }
-    ];
-
-    let lower = colors[0];
-    let upper = colors[colors.length - 1];
+  /**
+   * Show combo notification
+   */
+  public showComboNotification(player: Player, combo: number): void {
+    if (combo < 3) return; // Only show for combos of 3 or more
     
-    for (let i = 0; i < colors.length - 1; i++) {
-      if (score >= colors[i].score && score < colors[i + 1].score) {
-        lower = colors[i];
-        upper = colors[i + 1];
-        break;
+    const colorInfo = ColorSystem.getComboColor(combo);
+    const bonusText = this.getComboText(combo);
+    
+    player.ui.sendData({
+      type: 'combo',
+      data: {
+        combo,
+        bonusText,
+        color: colorInfo.main,
+        glow: colorInfo.glow,
+        intensity: colorInfo.intensity
       }
-    }
-
-    const range = upper.score - lower.score;
-    const factor = range <= 0 ? 1 : (score - lower.score) / range;
-    const intensity = lower.intensity + (upper.intensity - lower.intensity) * factor;
-
-    return {
-      main: this.interpolateHex(lower.color, upper.color, factor),
-      glow: this.interpolateHex(lower.glow, upper.glow, factor),
-      intensity
-    };
+    });
   }
 
-  private interpolateHex(hex1: string, hex2: string, factor: number): string {
-    const r1 = parseInt(hex1.slice(1, 3), 16);
-    const g1 = parseInt(hex1.slice(3, 5), 16);
-    const b1 = parseInt(hex1.slice(5, 7), 16);
-    const r2 = parseInt(hex2.slice(1, 3), 16);
-    const g2 = parseInt(hex2.slice(3, 5), 16);
-    const b2 = parseInt(hex2.slice(5, 7), 16);
-
-    const r = Math.round(r1 + (r2 - r1) * factor);
-    const g = Math.round(g1 + (g2 - g1) * factor);
-    const b = Math.round(b1 + (b2 - b1) * factor);
-
-    return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
+  /**
+   * Calculate distance multiplier for effects
+   */
+  private calculateDistanceMultiplier(position: Vector3Like, origin?: Vector3Like): number {
+    if (!origin) return 1;
+    
+    const dx = position.x - origin.x;
+    const dy = position.y - origin.y;
+    const dz = position.z - origin.z;
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    
+    return 1 + Math.min(Math.pow(distance / 30, 1.1), 0.1);
   }
 
-  private createDynamicStyle(score: number, scale: number, duration: number, colorInfo: { main: string, glow: string, intensity: number }): string {
+  /**
+   * Calculate animation duration based on score
+   */
+  private calculateAnimationDuration(score: number, distanceMultiplier: number): number {
+    return 500 + Math.min(
+      score <= 30 
+        ? Math.pow(score, 1.2) * 3 
+        : Math.pow(score, 1.8) * 4
+      * distanceMultiplier, 1200);
+  }
+
+  /**
+   * Calculate scale based on score
+   */
+  private calculateScale(score: number, distanceMultiplier: number): number {
+    return 1 + Math.min(
+      score <= 30
+        ? Math.pow(score / 80, 2.4)
+        : Math.pow(score / 70, 2.4)
+      * distanceMultiplier, 0.8);
+  }
+
+  /**
+   * Get descriptive text for combo
+   */
+  private getComboText(combo: number): string {
+    if (combo >= 15) return 'UNSTOPPABLE!';
+    if (combo >= 10) return 'DOMINATING!';
+    if (combo >= 7) return 'RAMPAGE!';
+    if (combo >= 5) return 'KILLING SPREE!';
+    if (combo >= 3) return 'COMBO!';
+    return '';
+  }
+
+  /**
+   * Create dynamic CSS style for damage numbers
+   */
+  private createDynamicStyle(score: number, scale: number, duration: number, colorInfo: ColorInfo): string {
     return `
       @keyframes scoreAnimation {
         0% {
@@ -157,6 +211,49 @@ export class SceneUIManager {
       --score-value: ${score};
       --intensity: ${colorInfo.intensity};
     `;
+  }
+
+  /**
+   * Process hit information and show appropriate notifications
+   */
+  public processHit(hitInfo: HitInfo): void {
+    if (!this.world) return;
+    
+    // In Hytopia, we need to find the player entity first, then get the player
+    let player: Player | undefined;
+    
+    this.world.entityManager.getAllPlayerEntities().forEach(playerEntity => {
+      if (playerEntity.player && playerEntity.player.id === hitInfo.playerId) {
+        player = playerEntity.player;
+      }
+    });
+    
+    if (!player) return;
+    
+    // Calculate score using ScoreManager
+    const scoreManager = ScoreManager.getInstance();
+    const score = scoreManager.calculateScore(hitInfo);
+    
+    // Show hit notification
+    this.showHitNotification(
+      hitInfo.hitPosition,
+      hitInfo.damage,
+      player,
+      hitInfo.isHeadshot,
+      hitInfo.spawnOrigin
+    );
+    
+    // Show combo notification if applicable
+    const combo = scoreManager.getCombo(hitInfo.playerId);
+    if (combo >= 3) {
+      this.showComboNotification(player, combo);
+    }
+    
+    // If it's a kill, show special effects
+    if (hitInfo.isKill) {
+      // Reset combo after showing the notification
+      scoreManager.resetCombo(hitInfo.playerId);
+    }
   }
 
   public cleanup(): void {
