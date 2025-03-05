@@ -3,6 +3,169 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Creepster&display=swap" rel="stylesheet">
 
+<!-- Logger Script -->
+<script src="logger.js"></script>
+
+<style>
+  .damage-numbers-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .damage-number {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-family: 'Creepster', cursive;
+    font-size: 24px;
+    color: #ff4444;
+    text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.5);
+    animation: floatUp 1s ease-out forwards;
+    white-space: nowrap;
+    pointer-events: none;
+    will-change: transform, opacity;
+    transform-origin: center center;
+    perspective: 1000px;
+    backface-visibility: hidden;
+  }
+
+  .damage-value.critical {
+    color: #ff0000;
+    font-size: 32px;
+    text-shadow: 0 0 10px #ff0000;
+    animation: criticalPulse 0.5s ease-out;
+  }
+
+  @keyframes floatUp {
+    0% {
+      transform: translate(-50%, -50%) scale(var(--initial-scale));
+      opacity: var(--initial-opacity);
+    }
+    
+    /* Pop in and start rising */
+    15% {
+      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.2)) scale(var(--pop-scale));
+      opacity: var(--peak-opacity);
+    }
+    
+    /* Reach peak height */
+    30% {
+      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.3)) scale(1);
+      opacity: var(--peak-opacity);
+    }
+    
+    /* Hold at peak */
+    60% {
+      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.4)) scale(1);
+      opacity: var(--peak-opacity);
+    }
+    
+    /* Start fading */
+    85% {
+      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.5)) scale(var(--final-scale));
+      opacity: var(--fade-opacity);
+    }
+    
+    /* Fade out completely */
+    100% {
+      transform: translate(-50%, calc(-50% - var(--rise-height))) scale(var(--final-scale));
+      opacity: var(--final-opacity);
+    }
+  }
+
+  @keyframes criticalPulse {
+    0% {
+      transform: scale(1);
+      text-shadow: 0 0 10px #ff0000;
+    }
+    50% {
+      transform: scale(var(--pop-scale));
+      text-shadow: 0 0 20px #ff0000;
+    }
+    100% {
+      transform: scale(1);
+      text-shadow: 0 0 10px #ff0000;
+    }
+  }
+
+  .points-popup {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ffff00;
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.5);
+    animation: pointsFloat 1s ease-out forwards;
+  }
+
+  .points-popup.headshot {
+    color: #ff0000;
+    font-size: 24px;
+  }
+
+  @keyframes pointsFloat {
+    0% {
+      transform: translateY(0) scale(0.5);
+      opacity: 0;
+    }
+    20% {
+      transform: translateY(-10px) scale(1.2);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-30px) scale(1);
+      opacity: 0;
+    }
+  }
+
+  .scene-ui {
+    pointer-events: none;
+    user-select: none;
+    transform-origin: center center;
+    perspective: 1000px;
+    backface-visibility: hidden;
+  }
+
+  .damage-notification {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .damage-text {
+    font-family: var(--display-font);
+    font-weight: bold;
+    text-align: center;
+    white-space: nowrap;
+    animation: damageFloat 1.5s ease-out forwards;
+  }
+
+  @keyframes damageFloat {
+    0% {
+      transform: translateY(0) scale(0.5);
+      opacity: 0;
+    }
+    15% {
+      transform: translateY(-40px) scale(1.2);
+      opacity: 1;
+    }
+    80% {
+      transform: translateY(-160px) scale(1);
+      opacity: 0.8;
+    }
+    100% {
+      transform: translateY(-200px) scale(0.8);
+      opacity: 0;
+    }
+  }
+</style>
+
 <!-- UI-->
 <div class="boss-health-container">
   <div class="boss-name"></div>
@@ -11,6 +174,7 @@
   </div>
 </div>
 
+<div class="damage-numbers-container"></div>
 <div class="crosshair"></div>
 <div class="vignette"></div>
 <div class="headshot-flash"></div>
@@ -78,12 +242,54 @@
     </div>
 </template>
 
+<template id="damage-notification-template">
+  <div class="scene-ui damage-notification">
+    <div class="damage-text"></div>
+  </div>
+</template>
+
 <!-- UI Scripts-->
 <script>
   const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
   let timerInterval;
   let killStreak = 0;
   let killStreakTimeout;
+
+  // Function to show damage numbers
+  function showDamageNumber(data) {
+    // Extract data from the nested structure
+    const { amount, isCritical, style, duration, worldPosition } = data.data || data;
+    
+    // Convert world position to screen coordinates using the correct Hytopia method
+    const screenPos = hytopia.toScreenPosition(worldPosition);
+    if (!screenPos) return; // Position is not visible on screen
+    
+    const container = document.querySelector('.damage-numbers-container');
+    const damageEl = document.createElement('div');
+    damageEl.className = 'damage-number';
+    
+    const valueEl = document.createElement('span');
+    valueEl.className = `damage-value${isCritical ? ' critical' : ''}`;
+    valueEl.textContent = Math.floor(amount);
+    
+    damageEl.appendChild(valueEl);
+    
+    // Position the damage number at the screen coordinates
+    damageEl.style.left = `${screenPos.x}px`;
+    damageEl.style.top = `${screenPos.y}px`;
+    
+    // Apply the dynamic style if provided
+    if (style) {
+      damageEl.style.cssText += style;
+    }
+    
+    container.appendChild(damageEl);
+    
+    // Remove the element after animation completes
+    setTimeout(() => {
+      damageEl.remove();
+    }, duration || 1000);
+  }
 
   // Function to show points popup - moved to global scope
   function showPointsPopup(amount, isHeadshot) {
@@ -210,7 +416,6 @@
       rouletteInterval = setInterval(() => {
         const weapon = possibleWeapons[currentIndex];
         rouletteImage.src = `${CDN_ASSETS_URL}/${weapon.iconUri}`;
-        console.log(rouletteImage.src);
         rouletteName.textContent = weapon.name;
         currentIndex = (currentIndex + 1) % possibleWeapons.length;
       }, 100);
@@ -230,12 +435,66 @@
     return clone;
   });
 
+  // Register damage number template
+  hytopia.registerSceneUITemplate('damage-number', (id, onState) => {
+    const template = document.getElementById('damage-number-template');
+    const clone = template.content.cloneNode(true);
+    const damageNumber = clone.querySelector('.damage-number');
+    const damageValue = clone.querySelector('.damage-value');
+    
+    onState(state => {
+      const { amount, isCritical, style, duration } = state;
+      damageValue.textContent = Math.floor(amount);
+      
+      if (isCritical) {
+        damageValue.classList.add('critical');
+      }
+      
+      // Apply dynamic style if provided
+      if (style) {
+        damageNumber.style.cssText = style;
+      }
+      
+      // Remove after animation
+      setTimeout(() => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.remove();
+        }
+      }, duration || 1000);
+    });
+    
+    return clone;
+  });
+
+  // Register damage notification template
+  hytopia.registerSceneUITemplate('damage-notification', (id, onState) => {
+    const template = document.getElementById('damage-notification-template');
+    const clone = template.content.cloneNode(true);
+    const damageText = clone.querySelector('.damage-text');
+    
+    onState(state => {
+      if (!damageText || !state) return;
+      
+      // Update damage text
+      damageText.textContent = `${state.isCritical ? '💥' : ''}${Math.round(state.amount)}`;
+      
+      // Apply custom style if provided
+      if (state.style) {
+        damageText.style.cssText = state.style;
+      }
+    });
+    
+    return clone;
+  });
+
   // handle game data ui updates
   hytopia.onData(data => {
     const { type } = data;
 
     if (!type) {
-      return console.warn('No type received for data', data);
+      console.warn('No type received for data', data);
+      return;
     }
     
     // Track kill streak
@@ -259,30 +518,40 @@
     // Handle kill feedback
     if (type === 'kill') {
       const { reward } = data;
-      showPointsPopup(Math.floor(reward), false);
       
-      // Increment kill streak
-      killStreak++;
-      
-      // Clear previous timeout
-      if (killStreakTimeout) {
-        clearTimeout(killStreakTimeout);
-      }
-      
-      // Reset kill streak after 5 seconds of no kills
-      killStreakTimeout = setTimeout(() => {
-        killStreak = 0;
+      try {
+        if (reward) {
+          showPointsPopup(Math.floor(reward), false);
+        }
+        
+        // Increment kill streak
+        killStreak++;
+        
+        // Clear previous timeout
+        if (killStreakTimeout) {
+          clearTimeout(killStreakTimeout);
+        }
+        
+        // Reset kill streak after 5 seconds of no kills
+        killStreakTimeout = setTimeout(() => {
+          killStreak = 0;
+          updateKillStreakCounter();
+        }, 5000);
+        
+        // Update kill streak counter
         updateKillStreakCounter();
-      }, 5000);
-      
-      // Update kill streak counter
-      updateKillStreakCounter();
-      
-      // Apply special effects for kill streaks
-      if (killStreak >= 3) {
-        // Apply screen shake for kill streaks
-        applyScreenShake(0.1 * Math.min(killStreak, 10));
+        
+        // Apply special effects for kill streaks
+        if (killStreak >= 3) {
+          // Apply screen shake for kill streaks
+          const intensity = 0.1 * Math.min(killStreak, 10);
+          applyScreenShake(intensity);
+        }
+      } catch (error) {
+        console.error('Error in kill handling:', error);
       }
+      
+      return; // Early return to prevent physics engine spam
     }
     
     // Handle screen shake
@@ -372,61 +641,47 @@
         bossHealthFill.style.width = `${healthPercent}%`;
       }
     }
-  });
 
-  // Handle messages from server
-  window.addEventListener('message', event => {
-    const data = event.data;
-    const type = data?.type;
-
-    if (!type) {
-      return console.warn('No type received for data', data);
-    }
-    
-    // Track kill streak
-    let killStreak = 0;
-    let killStreakTimeout;
-    
-    // Handle hit feedback (headshot)
-    if (type === 'headshot') {
-      const { reward } = data;
-      showPointsPopup(Math.floor(reward), true);
-    }
-    
-    // Handle normal hit feedback
-    if (type === 'hit') {
-      const { reward } = data;
-      if (reward > 0) {
-        showPointsPopup(Math.floor(reward), false);
-      }
-    }
-    
-    // Handle kill feedback
-    if (type === 'kill') {
-      const { reward } = data;
-      showPointsPopup(Math.floor(reward), false);
-      
-      // Increment kill streak
-      killStreak++;
-      
-      // Clear previous timeout
-      if (killStreakTimeout) {
-        clearTimeout(killStreakTimeout);
-      }
-      
-      // Reset kill streak after 5 seconds of no kills
-      killStreakTimeout = setTimeout(() => {
-        killStreak = 0;
-        updateKillStreakCounter();
-      }, 5000);
-      
-      // Update kill streak counter
-      updateKillStreakCounter();
-      
-      // Apply special effects for kill streaks
-      if (killStreak >= 3) {
-        // Apply screen shake for kill streaks
-        applyScreenShake(0.1 * Math.min(killStreak, 10));
+    // Handle damage numbers
+    if (type === 'damage') {
+      const { data: damageData } = data;
+      if (damageData) {
+        const container = document.querySelector('.damage-numbers-container');
+        const damageEl = document.createElement('div');
+        damageEl.className = 'damage-number';
+        
+        const valueEl = document.createElement('span');
+        valueEl.className = `damage-value${damageData.isCritical ? ' critical' : ''}`;
+        valueEl.textContent = Math.floor(damageData.amount);
+        
+        damageEl.appendChild(valueEl);
+        
+        // Position relative to viewport center with random offset
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // Random position near the center of the screen
+        const offsetX = (Math.random() - 0.5) * 100; // ±50px from center
+        const offsetY = (Math.random() - 0.5) * 100;
+        
+        damageEl.style.left = `${(viewportWidth / 2) + offsetX}px`;
+        damageEl.style.top = `${(viewportHeight / 2) + offsetY}px`;
+        
+        // Apply any dynamic styles
+        if (damageData.style) {
+          damageEl.style.cssText += damageData.style;
+        }
+        
+        // Add to container and animate
+        container.appendChild(damageEl);
+        
+        // Scale and fade animation
+        damageEl.style.animation = 'damageFloat 0.8s ease-out forwards';
+        
+        // Remove after animation
+        setTimeout(() => {
+          damageEl.remove();
+        }, damageData.duration || 1000);
       }
     }
   });
@@ -563,44 +818,6 @@
     pointer-events: none;
     overflow: hidden;
     z-index: 1000;
-  }
-
-  .points-popup {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    color: #44ff44;
-    font-family: 'Arial', sans-serif;
-    font-weight: bold;
-    font-size: 20px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
-    opacity: 0;
-    transform: translateY(20px);
-    animation: pointsPopup 1s ease-out forwards;
-  }
-
-  .points-popup.headshot {
-    color: #ff4444;
-    font-size: 24px;
-  }
-
-  @keyframes pointsPopup {
-    0% {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    20% {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    80% {
-      opacity: 1;
-      transform: translateY(-20px);
-    }
-    100% {
-      opacity: 0;
-      transform: translateY(-40px);
-    }
   }
 
   .money-display {
@@ -886,34 +1103,14 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) scale(0);
-    font-family: "Creepster", serif;
-    font-weight: 400;
-    font-style: normal;
-    font-size: 72px;
+    font-family: 'Creepster', cursive;
+    font-size: 48px;
     color: #ff0000;
-    text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+    text-shadow: 0 0 10px #ff0000;
     opacity: 0;
-    transition: transform 0.5s ease, opacity 0.5s ease;
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
     pointer-events: none;
-    z-index: 1000;
-  }
-
-  /* Feedback effects styles */
-  .headshot-flash {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    background-color: rgba(255, 0, 0, 0.2);
-    opacity: 0;
-    z-index: 1001;
-    transition: opacity 0.05s ease-in;
-  }
-  
-  .headshot-flash.show {
-    opacity: 1;
+    z-index: 2000;
   }
 
   .wave-announcement.show {
@@ -945,38 +1142,62 @@
     }
   }
 
+  .headshot-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255,0,0,0.2) 0%, rgba(255,0,0,0) 70%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease-out;
+    z-index: 1500;
+  }
+
+  .headshot-flash.show {
+    opacity: 1;
+  }
+
+  .vignette {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: radial-gradient(circle, transparent 60%, rgba(0,0,0,0.4) 100%);
+    z-index: 1000;
+  }
+
   .killstreak-counter {
     position: fixed;
-    top: 100px;
+    top: 20px;
     right: 20px;
-    background-color: rgba(0, 0, 0, 0.7);
-    border-radius: 5px;
-    padding: 5px 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
     opacity: 0;
     transform: scale(0.8);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
   }
-  
+
   .killstreak-counter.active {
     opacity: 1;
     transform: scale(1);
   }
-  
+
   .killstreak-number {
-    font-family: "Creepster", serif;
-    font-size: 36px;
-    color: #ff4444;
-    text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+    font-family: 'Creepster', cursive;
+    font-size: 48px;
+    color: #ff0000;
+    text-shadow: 0 0 10px #ff0000;
   }
-  
+
   .killstreak-label {
     font-family: 'Arial', sans-serif;
-    font-size: 12px;
-    font-weight: bold;
+    font-size: 14px;
     color: #ffffff;
-    text-transform: uppercase;
+    text-shadow: 2px 2px 2px rgba(0,0,0,0.5);
   }
 </style>
