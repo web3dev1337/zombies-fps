@@ -11,7 +11,7 @@ export class SceneUIManager {
 
   // Animation constants
   private static readonly LOW_DAMAGE_THRESHOLD = 30;
-  private static readonly BASE_DURATION = 150;  // Base duration for all animations
+  private static readonly BASE_DURATION = 250;  // Base duration for all animations
   private static readonly MAX_DURATION = 400;   // Maximum duration for any animation
   private static readonly DAMAGE_POWER = 0.8;   // How much damage affects duration
   private static readonly DAMAGE_MULTIPLIER = 2; // Base multiplier for damage->duration conversion
@@ -26,20 +26,13 @@ export class SceneUIManager {
   private static readonly BASE_FONT_SIZE = 48;
 
   // Rise height constants
-  private static readonly NORMAL_RISE_HEIGHT = 250;
-  private static readonly HEADSHOT_RISE_HEIGHT = 300;
+  private static readonly NORMAL_RISE_HEIGHT = 400;
+  private static readonly HEADSHOT_RISE_HEIGHT = 600;
 
   // Glow constants
   private static readonly BASE_GLOW = 5;
   private static readonly GLOW_MULTIPLIER = 15;
 
-  // Hit notification constants
-  private static readonly MIN_LIFETIME = 800;
-  private static readonly MAX_LIFETIME = 1500;
-  private static readonly LIFETIME_LOW_DAMAGE_POWER = 1.2;
-  private static readonly LIFETIME_HIGH_DAMAGE_POWER = 1.4;
-  private static readonly LIFETIME_LOW_MULTIPLIER = 10;
-  private static readonly LIFETIME_HIGH_MULTIPLIER = 12;
   private static readonly BASE_HIT_SCALE = 0.8;
   private static readonly HIT_SCALE_DIVISOR = 50;
   private static readonly HIT_SCALE_MULTIPLIER = 0.4;
@@ -53,12 +46,6 @@ export class SceneUIManager {
   // Random offset constants
   private static readonly RANDOM_OFFSET_RANGE = 0.8;  // ±0.4 units
   private static readonly VERTICAL_OFFSET = 0.1;
-
-  // Block destruction constants
-  private static readonly BLOCK_SCORE_POWER = 1.4;
-  private static readonly BLOCK_VERTICAL_BASE = 1.5;
-  private static readonly BLOCK_SCORE_DIVISOR = 30;
-  private static readonly MAX_BLOCK_VERTICAL = 1.5;
 
   // Combo thresholds
   private static readonly MIN_COMBO_THRESHOLD = 3;
