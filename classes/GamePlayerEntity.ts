@@ -232,24 +232,32 @@ export default class GamePlayerEntity extends PlayerEntity {
   }
 
   private _onTickWithPlayerInput = (payload: EventPayloads[BaseEntityControllerEvent.TICK_WITH_PLAYER_INPUT]) => {
+    if (!this.isSpawned || !this.world) {
+      return;
+    }
+
     const { input } = payload;
 
     if (!this._gun) {
       return;
     }
     
-    if (input.ml && !this.downed) {
-      this._gun.shoot();
-    }
+    try {
+      if (input.ml && !this.downed) {
+        this._gun.shoot();
+      }
 
-    if (input.r && !this.downed) {
-      this._gun.reload();
-      input.r = false;
-    }
+      if (input.r && !this.downed) {
+        this._gun.reload();
+        input.r = false;
+      }
 
-    if (input.e) {
-      this._interactRaycast();
-      input.e = false;
+      if (input.e) {
+        this._interactRaycast();
+        input.e = false;
+      }
+    } catch (error) {
+      console.error('Error in _onTickWithPlayerInput:', error);
     }
   }
 
