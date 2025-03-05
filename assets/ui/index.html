@@ -82,6 +82,81 @@
 <script>
   const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
   let timerInterval;
+  let killStreak = 0;
+  let killStreakTimeout;
+
+  // Function to show points popup - moved to global scope
+  function showPointsPopup(amount, isHeadshot) {
+    const pointsFeed = document.querySelector('.points-feed');
+    const popup = document.createElement('div');
+    popup.className = `points-popup ${isHeadshot ? 'headshot' : ''}`;
+    popup.textContent = `+${amount}`;
+    pointsFeed.appendChild(popup);
+    
+    // Remove the popup element after animation
+    setTimeout(() => {
+      popup.remove();
+    }, 1000);
+  }
+
+  // Function to update kill streak counter - moved to global scope
+  function updateKillStreakCounter() {
+    const counter = document.querySelector('.killstreak-counter');
+    const number = counter.querySelector('.killstreak-number');
+    
+    number.textContent = killStreak;
+    
+    if (killStreak >= 3) {
+      counter.classList.add('active');
+    } else {
+      counter.classList.remove('active');
+    }
+  }
+
+  // Function to apply screen shake effect - moved to global scope
+  function applyScreenShake(intensity = 0.2, duration = 200) {
+    const body = document.body;
+    body.style.transition = 'none';
+    
+    // Generate random offsets based on intensity
+    const shakeLoop = (timeLeft) => {
+      if (timeLeft <= 0) {
+        body.style.transform = 'translate(0, 0)';
+        body.style.transition = '';
+        return;
+      }
+      
+      const xOffset = (Math.random() - 0.5) * intensity * 20;
+      const yOffset = (Math.random() - 0.5) * intensity * 20;
+      
+      body.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
+      
+      requestAnimationFrame(() => shakeLoop(timeLeft - 16));
+    };
+    
+    shakeLoop(duration);
+  }
+
+  // Function to show a flash effect - moved to global scope
+  function showFlash(flashClass, duration) {
+    const flashElement = document.querySelector(`.${flashClass}`);
+    flashElement.classList.add('show');
+    
+    setTimeout(() => {
+      flashElement.classList.remove('show');
+    }, duration || 200);
+  }
+
+  // Function to show wave announcement - moved to global scope
+  function showWaveAnnouncement(waveNumber) {
+    const announcement = document.querySelector('.wave-announcement');
+    const numberSpan = announcement.querySelector('.wave-number');
+    numberSpan.textContent = waveNumber;
+    announcement.classList.add('show');
+    setTimeout(() => {
+      announcement.classList.remove('show');
+    }, 3000);
+  }
 
   hytopia.registerSceneUITemplate('downed-player', (id, onState) => {
     const template = document.getElementById('downed-player-template');
@@ -208,54 +283,6 @@
       applyScreenShake(intensity, duration);
     }
     
-    // Function to show a flash effect
-    function showFlash(flashClass, duration) {
-      const flashElement = document.querySelector(`.${flashClass}`);
-      flashElement.classList.add('show');
-      
-      setTimeout(() => {
-        flashElement.classList.remove('show');
-      }, duration || 200);
-    }
-    
-    // Function to update kill streak counter
-    function updateKillStreakCounter() {
-      const counter = document.querySelector('.killstreak-counter');
-      const number = counter.querySelector('.killstreak-number');
-      
-      number.textContent = killStreak;
-      
-      if (killStreak >= 3) {
-        counter.classList.add('active');
-      } else {
-        counter.classList.remove('active');
-      }
-    }
-    
-    // Function to apply screen shake effect
-    function applyScreenShake(intensity = 0.2, duration = 200) {
-      const body = document.body;
-      body.style.transition = 'none';
-      
-      // Generate random offsets based on intensity
-      const shakeLoop = (timeLeft) => {
-        if (timeLeft <= 0) {
-          body.style.transform = 'translate(0, 0)';
-          body.style.transition = '';
-          return;
-        }
-        
-        const xOffset = (Math.random() - 0.5) * intensity * 20;
-        const yOffset = (Math.random() - 0.5) * intensity * 20;
-        
-        body.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
-        
-        requestAnimationFrame(() => shakeLoop(timeLeft - 16));
-      };
-      
-      shakeLoop(duration);
-    }
-
     if (type === 'start') {
       document.querySelector('.game-info').style.display = 'block';
       document.querySelector('.game-info .timer').textContent = 'Time: 00:00';
@@ -344,16 +371,6 @@
     }
   });
 
-  function showWaveAnnouncement(waveNumber) {
-    const announcement = document.querySelector('.wave-announcement');
-    const numberSpan = announcement.querySelector('.wave-number');
-    numberSpan.textContent = waveNumber;
-    announcement.classList.add('show');
-    setTimeout(() => {
-      announcement.classList.remove('show');
-    }, 3000);
-  }
-
   // Handle messages from server
   window.addEventListener('message', event => {
     const data = event.data;
@@ -400,20 +417,6 @@
         // Apply screen shake for kill streaks
         applyScreenShake(0.1 * Math.min(killStreak, 10));
       }
-    }
-
-    // Function to show points popup
-    function showPointsPopup(amount, isHeadshot) {
-      const pointsFeed = document.querySelector('.points-feed');
-      const popup = document.createElement('div');
-      popup.className = `points-popup ${isHeadshot ? 'headshot' : ''}`;
-      popup.textContent = `+${amount}`;
-      pointsFeed.appendChild(popup);
-      
-      // Remove the popup element after animation
-      setTimeout(() => {
-        popup.remove();
-      }, 1000);
     }
   });
 </script>
