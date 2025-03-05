@@ -89,17 +89,24 @@ export class SceneUIManager {
     
     const duration = this.calculateAnimationDuration(damage, distanceMultiplier);
     
-    // Calculate scale based on damage (bigger hits = bigger numbers)
-    const baseScale = Math.min(SceneUIManager.BASE_HIT_SCALE + (damage / SceneUIManager.HIT_SCALE_DIVISOR) * SceneUIManager.HIT_SCALE_MULTIPLIER, SceneUIManager.MAX_HIT_SCALE);
+    // Enhanced scale calculation based on damage
+    const baseScale = Math.min(
+      SceneUIManager.BASE_HIT_SCALE + 
+      (damage / SceneUIManager.HIT_SCALE_DIVISOR) * SceneUIManager.HIT_SCALE_MULTIPLIER * 
+      (isHeadshot ? 1.5 : 1), // Bigger scale for headshots
+      SceneUIManager.MAX_HIT_SCALE
+    );
     
-    // Random offset for more natural movement
-    const randomOffsetX = (Math.random() - 0.5) * SceneUIManager.RANDOM_OFFSET_RANGE;
-    const randomOffsetZ = (Math.random() - 0.5) * SceneUIManager.RANDOM_OFFSET_RANGE;
+    // Random offset with smoother distribution
+    const angle = Math.random() * Math.PI * 2;
+    const radius = Math.random() * SceneUIManager.RANDOM_OFFSET_RANGE;
+    const randomOffsetX = Math.cos(angle) * radius;
+    const randomOffsetZ = Math.sin(angle) * radius;
     
-    // Calculate color based on damage
-    const colorInfo = ColorSystem.getScoreColor(damage);
+    // Calculate color based on damage with enhanced intensity for headshots
+    const colorInfo = ColorSystem.getScoreColor(isHeadshot ? damage * 1.5 : damage);
     
-    // Create animation style with random trajectory and smooth easing
+    // Create animation style with enhanced visuals
     const dynamicStyle = this.createDynamicStyle(damage, baseScale, duration, colorInfo, {
       offsetX: randomOffsetX,
       offsetZ: randomOffsetZ,
@@ -111,11 +118,11 @@ export class SceneUIManager {
       templateId: 'damage-notification',
       position: {
         x: worldPosition.x,
-        y: worldPosition.y + SceneUIManager.VERTICAL_OFFSET,
+        y: worldPosition.y + SceneUIManager.VERTICAL_OFFSET + (isHeadshot ? 0.2 : 0), // Slightly higher for headshots
         z: worldPosition.z
       },
       state: {
-        amount: damage,
+        amount: Math.round(damage), // Ensure damage is rounded
         isCritical: isHeadshot,
         style: dynamicStyle
       }
@@ -123,7 +130,7 @@ export class SceneUIManager {
 
     damageNotification.load(this.world);
 
-    // Automatically unload after animation completes
+    // Cleanup with buffer
     setTimeout(() => {
       damageNotification.unload();
     }, duration + SceneUIManager.CLEANUP_BUFFER);
@@ -175,19 +182,30 @@ export class SceneUIManager {
   ): string {
     const { offsetX, offsetZ, isHeadshot } = options;
     
-    // Calculate movement parameters - using absolute pixel values for more visibility
+    // Calculate movement parameters
     const baseRiseHeight = isHeadshot ? SceneUIManager.HEADSHOT_RISE_HEIGHT : SceneUIManager.NORMAL_RISE_HEIGHT;
     
-    // Return simplified style focused on color and scale, let CSS animation handle movement
+    // Calculate dynamic properties based on score
+    const glowIntensity = SceneUIManager.BASE_GLOW + colorInfo.intensity * SceneUIManager.GLOW_MULTIPLIER;
+    const popScale = 1 + Math.min(Math.pow(score / 50, 1.2), 0.8);
+    
+    // Return enhanced style with hardware acceleration and dynamic properties
     return `
       font-size: ${scale * SceneUIManager.BASE_FONT_SIZE}px;
       color: ${colorInfo.main};
-      text-shadow: 0 0 ${SceneUIManager.BASE_GLOW + colorInfo.intensity * SceneUIManager.GLOW_MULTIPLIER}px ${colorInfo.glow};
+      text-shadow: 0 0 ${glowIntensity}px ${colorInfo.glow},
+                   0 0 ${glowIntensity * 0.5}px ${colorInfo.glow};
       --score-value: ${score};
       --intensity: ${colorInfo.intensity};
-      /* Force hardware acceleration for smoother animations */
-      transform: translateZ(0);
-      will-change: transform;
+      --pop-scale: ${popScale};
+      --rise-height: ${baseRiseHeight}px;
+      transform: translateZ(0) translate(${offsetX * 50}px, ${offsetZ * 50}px);
+      will-change: transform, opacity;
+      animation-duration: ${duration}ms;
+      animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+      perspective: 1000px;
+      backface-visibility: hidden;
+      ${isHeadshot ? 'animation-name: criticalPulse;' : ''}
     `;
   }
 
