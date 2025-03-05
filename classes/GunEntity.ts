@@ -151,7 +151,7 @@ export default abstract class GunEntity extends Entity {
   }
 
   public reload() {
-    if (!this.parent || !this.parent.world || this._reloading) {
+    if (!this.parent || !this.parent.world || this._reloading || this.ammo >= this.maxAmmo) {
       return;
     }
 
