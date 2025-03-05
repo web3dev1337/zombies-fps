@@ -2,6 +2,7 @@ import {
   Audio,
   Entity,
   EntityEvent,
+  ModelRegistry,
   PathfindingEntityController,
 } from 'hytopia';
 
@@ -94,24 +95,50 @@ export default class EnemyEntity extends Entity {
   }
 
   /**
-   * Check if a hit is a headshot based on the hit position
-   * @param hitPoint The position where the enemy was hit
-   * @returns True if the hit is a headshot, false otherwise
+   * Determines whether the given hit point is a headshot by retrieving the "head"
+   * node from the underlying model.
+   *
+   * Note: Since Entity does not expose a "model" property, we retrieve the loaded model
+   * via the renderObject (which is attached internally). Ensure your glTF model names the head node "head".
    */
   public isHeadshot(hitPoint: Vector3Like): boolean {
     if (!this.isSpawned) {
       return false;
     }
+
+    // Attempt to retrieve the loaded model from the entity.
+    const modelInstance = (this as any).renderObject;
+    if (!modelInstance) {
+      return false;
+    }
+
+    const headNode = modelInstance.getObjectByName('head');
+    if (!headNode) {
+      return false;
+    }
+
+    // Get world position of head node
+    const headPosition = {
+      x: 0,
+      y: 0,
+      z: 0
+    };
     
-    // Calculate the height of the hit relative to the enemy's position
-    // The head is typically at the top of the model
-    const headHeight = this.position.y + 1.7; // Assuming the model is about 2 units tall
-    const headRadius = 0.3; // Approximate radius of the head
+    // Get the world matrix of the head node
+    const worldMatrix = headNode.matrixWorld;
+    headPosition.x = worldMatrix.elements[12];
+    headPosition.y = worldMatrix.elements[13];
+    headPosition.z = worldMatrix.elements[14];
+
+    const scale = this.modelScale ?? 1;
+    const headRadius = 0.3 * scale;
+    const headHeight = 0.4 * scale;
+
+    const dx = Math.abs(hitPoint.x - headPosition.x);
+    const dy = Math.abs(hitPoint.y - headPosition.y);
+    const dz = Math.abs(hitPoint.z - headPosition.z);
     
-    // Check if the hit point is within the head area
-    return hitPoint.y > headHeight - headRadius && 
-           Math.abs(hitPoint.x - this.position.x) < headRadius && 
-           Math.abs(hitPoint.z - this.position.z) < headRadius;
+    return dx <= headRadius && dy <= headHeight && dz <= headRadius;
   }
   
   /**
