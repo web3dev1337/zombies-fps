@@ -11,12 +11,10 @@ export class SceneUIManager {
 
   // Animation constants
   private static readonly LOW_DAMAGE_THRESHOLD = 30;
-  private static readonly BASE_DURATION = 150;
-  private static readonly MAX_DURATION = 150;
-  private static readonly LOW_DAMAGE_POWER = 0.8;
-  private static readonly HIGH_DAMAGE_POWER = 1.4;
-  private static readonly LOW_DAMAGE_MULTIPLIER = 3;
-  private static readonly HIGH_DAMAGE_MULTIPLIER = 4;
+  private static readonly BASE_DURATION = 150;  // Base duration for all animations
+  private static readonly MAX_DURATION = 400;   // Maximum duration for any animation
+  private static readonly DAMAGE_POWER = 0.8;   // How much damage affects duration
+  private static readonly DAMAGE_MULTIPLIER = 2; // Base multiplier for damage->duration conversion
 
   // Scale constants
   private static readonly BASE_SCALE = 1;
@@ -70,7 +68,7 @@ export class SceneUIManager {
   private static readonly UNSTOPPABLE_THRESHOLD = 15;
 
   // Animation cleanup buffer
-  private static readonly CLEANUP_BUFFER = 100;  // ms to wait after animation before cleanup
+  private static readonly CLEANUP_BUFFER = 50;  // ms to wait after animation before cleanup
 
   private constructor(world: World) {
     this.world = world;
@@ -81,6 +79,17 @@ export class SceneUIManager {
       SceneUIManager.instance = new SceneUIManager(world);
     }
     return SceneUIManager.instance;
+  }
+
+  /**
+   * Calculate animation duration based on damage
+   */
+  private calculateAnimationDuration(damage: number, distanceMultiplier: number): number {
+    // Faster base duration with a smooth scaling based on damage
+    return SceneUIManager.BASE_DURATION + Math.min(
+      Math.pow(damage, SceneUIManager.DAMAGE_POWER) * SceneUIManager.DAMAGE_MULTIPLIER * distanceMultiplier,
+      SceneUIManager.MAX_DURATION - SceneUIManager.BASE_DURATION
+    );
   }
 
   /**
@@ -98,13 +107,7 @@ export class SceneUIManager {
       distanceMultiplier = 1 + Math.min(Math.pow(distance / SceneUIManager.DISTANCE_DIVISOR, SceneUIManager.DISTANCE_POWER), SceneUIManager.MAX_DISTANCE_MULTIPLIER);
     }
     
-    // Calculate lifetime based on damage (bigger hits last longer)
-    const duration = SceneUIManager.MIN_LIFETIME + Math.min(
-      damage <= SceneUIManager.LOW_DAMAGE_THRESHOLD 
-        ? Math.pow(damage, SceneUIManager.LIFETIME_LOW_DAMAGE_POWER) * SceneUIManager.LIFETIME_LOW_MULTIPLIER
-        : Math.pow(damage, SceneUIManager.LIFETIME_HIGH_DAMAGE_POWER) * SceneUIManager.LIFETIME_HIGH_MULTIPLIER, 
-      SceneUIManager.MAX_LIFETIME - SceneUIManager.MIN_LIFETIME
-    );
+    const duration = this.calculateAnimationDuration(damage, distanceMultiplier);
     
     // Calculate scale based on damage (bigger hits = bigger numbers)
     const baseScale = Math.min(SceneUIManager.BASE_HIT_SCALE + (damage / SceneUIManager.HIT_SCALE_DIVISOR) * SceneUIManager.HIT_SCALE_MULTIPLIER, SceneUIManager.MAX_HIT_SCALE);
@@ -214,17 +217,6 @@ export class SceneUIManager {
     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
     
     return 1 + Math.min(Math.pow(distance / SceneUIManager.DISTANCE_DIVISOR, SceneUIManager.DISTANCE_POWER), SceneUIManager.MAX_DISTANCE_MULTIPLIER);
-  }
-
-  /**
-   * Calculate animation duration based on score
-   */
-  private calculateAnimationDuration(score: number, distanceMultiplier: number): number {
-    return SceneUIManager.BASE_DURATION + Math.min(
-      score <= SceneUIManager.LOW_DAMAGE_THRESHOLD
-        ? Math.pow(score, SceneUIManager.LOW_DAMAGE_POWER) * SceneUIManager.LOW_DAMAGE_MULTIPLIER
-        : Math.pow(score, SceneUIManager.HIGH_DAMAGE_POWER) * SceneUIManager.HIGH_DAMAGE_MULTIPLIER
-      * distanceMultiplier, SceneUIManager.MAX_DURATION);
   }
 
   /**
