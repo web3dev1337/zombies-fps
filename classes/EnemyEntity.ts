@@ -16,6 +16,7 @@ import type {
 } from 'hytopia';
 
 import GamePlayerEntity from './GamePlayerEntity';
+import { SceneUIManager } from '../src/managers/scene-ui-manager';
 
 const RETARGET_ACCUMULATOR_THRESHOLD_MS = 5000;
 const PATHFIND_ACCUMULATOR_THRESHOLD_MS = 3000;
@@ -184,21 +185,16 @@ export default class EnemyEntity extends Entity {
       fromPlayer.addMoney(moneyReward);
       
       // Send appropriate UI notification
-      if (fromPlayer) {
-        // Show damage numbers using SceneUI if we have hit point
-        if (hitPoint) {
-          const damageUI = new SceneUI({
-            templateId: 'damage-number',
-            state: {
-              amount: Math.floor(actualDamage),
-              isCritical: isHeadshot
-            },
-            position: hitPoint,
-            offset: { x: 0, y: 0.5, z: 0 } // Offset slightly above hit point
-          });
-          
-          damageUI.load(this.world);
-        }
+      if (fromPlayer && hitPoint) {
+        // Show damage numbers using SceneUIManager
+        const sceneUIManager = SceneUIManager.getInstance(this.world);
+        sceneUIManager.showHitNotification(
+          hitPoint,
+          actualDamage,
+          fromPlayer.player,
+          isHeadshot,
+          this.spawnOrigin
+        );
 
         fromPlayer.player.ui.sendData({ 
           type: damageType || 'hit',

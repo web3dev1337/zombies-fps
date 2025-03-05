@@ -260,13 +260,20 @@
   hytopia.registerSceneUITemplate('damage-number', (id, onState) => {
     const template = document.getElementById('damage-number-template');
     const clone = template.content.cloneNode(true);
+    const damageNumber = clone.querySelector('.damage-number');
     const damageValue = clone.querySelector('.damage-value');
     
     onState(state => {
-      const { amount, isCritical } = state;
+      const { amount, isCritical, style, duration } = state;
       damageValue.textContent = Math.floor(amount);
+      
       if (isCritical) {
         damageValue.classList.add('critical');
+      }
+      
+      // Apply dynamic style if provided
+      if (style) {
+        damageNumber.style.cssText = style;
       }
       
       // Remove after animation
@@ -275,7 +282,7 @@
         if (element) {
           element.remove();
         }
-      }, 1000);
+      }, duration || 1000);
     });
     
     return clone;
@@ -1056,17 +1063,24 @@
   .damage-number {
     position: absolute;
     transform-origin: center;
-    animation: damageFloat 1s ease-out forwards;
     pointer-events: none;
+    font-family: 'Arial', sans-serif;
+    font-weight: bold;
+    white-space: nowrap;
+    text-align: center;
+    -webkit-font-smoothing: antialiased;
+    backface-visibility: hidden;
   }
 
   .damage-value {
-    color: #ffffff;
-    font-family: 'Arial', sans-serif;
-    font-weight: bold;
-    font-size: 20px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+    display: inline-block;
+    transform-origin: center;
     white-space: nowrap;
+  }
+
+  .damage-value.critical {
+    font-weight: 900;
+    filter: drop-shadow(0 0 5px rgba(255, 0, 0, 0.5));
   }
 
   .damage-value.critical {
@@ -1075,24 +1089,5 @@
     text-shadow: 
       2px 2px 4px rgba(0, 0, 0, 1),
       0 0 8px rgba(255, 0, 0, 0.8);
-  }
-
-  @keyframes damageFloat {
-    0% {
-      opacity: 0;
-      transform: translateY(0) scale(0.8);
-    }
-    20% {
-      opacity: 1;
-      transform: translateY(-10px) scale(1.2);
-    }
-    80% {
-      opacity: 1;
-      transform: translateY(-30px) scale(1);
-    }
-    100% {
-      opacity: 0;
-      transform: translateY(-40px) scale(0.8);
-    }
   }
 </style>
