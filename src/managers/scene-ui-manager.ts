@@ -162,8 +162,8 @@ export class SceneUIManager {
   private calculateAnimationDuration(score: number, distanceMultiplier: number): number {
     return 500 + Math.min(
       score <= 30 
-        ? Math.pow(score, 1.2) * 3 
-        : Math.pow(score, 1.8) * 4
+        ? Math.pow(score, 1.1) * 2  // Faster for low damage
+        : Math.pow(score, 1.6) * 4  // Slightly slower for high damage
       * distanceMultiplier, 1200);
   }
 
@@ -173,8 +173,8 @@ export class SceneUIManager {
   private calculateScale(score: number, distanceMultiplier: number): number {
     return 1 + Math.min(
       score <= 30
-        ? Math.pow(score / 80, 2.4)
-        : Math.pow(score / 70, 2.4)
+        ? Math.pow(score / 60, 2.2)  // Slightly bouncier for low damage
+        : Math.pow(score / 70, 2.4)  // Keep same scale for high damage
       * distanceMultiplier, 0.8);
   }
 
