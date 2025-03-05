@@ -9,6 +9,32 @@ export class SceneUIManager {
   private static instance: SceneUIManager;
   private world: World;
 
+  // Animation constants
+  private static readonly LOW_DAMAGE_THRESHOLD = 30;
+  private static readonly BASE_DURATION = 300;
+  private static readonly MAX_DURATION = 1000;
+  private static readonly LOW_DAMAGE_POWER = 0.8;
+  private static readonly HIGH_DAMAGE_POWER = 1.4;
+  private static readonly LOW_DAMAGE_MULTIPLIER = 3;
+  private static readonly HIGH_DAMAGE_MULTIPLIER = 4;
+
+  // Scale constants
+  private static readonly BASE_SCALE = 1;
+  private static readonly MAX_SCALE_INCREASE = 0.8;
+  private static readonly LOW_DAMAGE_SCALE_DIVISOR = 60;
+  private static readonly HIGH_DAMAGE_SCALE_DIVISOR = 70;
+  private static readonly LOW_DAMAGE_SCALE_POWER = 1.8;
+  private static readonly HIGH_DAMAGE_SCALE_POWER = 2.4;
+  private static readonly BASE_FONT_SIZE = 48;
+
+  // Rise height constants
+  private static readonly NORMAL_RISE_HEIGHT = 120;
+  private static readonly HEADSHOT_RISE_HEIGHT = 180;
+
+  // Glow constants
+  private static readonly BASE_GLOW = 5;
+  private static readonly GLOW_MULTIPLIER = 15;
+
   private constructor(world: World) {
     this.world = world;
   }
@@ -160,22 +186,22 @@ export class SceneUIManager {
    * Calculate animation duration based on score
    */
   private calculateAnimationDuration(score: number, distanceMultiplier: number): number {
-    return 300 + Math.min(  // Reduced base duration for faster initial movement
-      score <= 30 
-        ? Math.pow(score, 0.8) * 3  // Much faster for low damage
-        : Math.pow(score, 1.4) * 4  // A bit faster for high damage
-      * distanceMultiplier, 1000);  // Reduced max duration
+    return SceneUIManager.BASE_DURATION + Math.min(
+      score <= SceneUIManager.LOW_DAMAGE_THRESHOLD
+        ? Math.pow(score, SceneUIManager.LOW_DAMAGE_POWER) * SceneUIManager.LOW_DAMAGE_MULTIPLIER
+        : Math.pow(score, SceneUIManager.HIGH_DAMAGE_POWER) * SceneUIManager.HIGH_DAMAGE_MULTIPLIER
+      * distanceMultiplier, SceneUIManager.MAX_DURATION);
   }
 
   /**
    * Calculate scale based on score
    */
   private calculateScale(score: number, distanceMultiplier: number): number {
-    return 1 + Math.min(
-      score <= 30
-        ? Math.pow(score / 60, 1.8)  // Less exponential curve for quicker initial scale
-        : Math.pow(score / 70, 2.4)  // Keep same scale for high damage
-      * distanceMultiplier, 0.8);
+    return SceneUIManager.BASE_SCALE + Math.min(
+      score <= SceneUIManager.LOW_DAMAGE_THRESHOLD
+        ? Math.pow(score / SceneUIManager.LOW_DAMAGE_SCALE_DIVISOR, SceneUIManager.LOW_DAMAGE_SCALE_POWER)
+        : Math.pow(score / SceneUIManager.HIGH_DAMAGE_SCALE_DIVISOR, SceneUIManager.HIGH_DAMAGE_SCALE_POWER)
+      * distanceMultiplier, SceneUIManager.MAX_SCALE_INCREASE);
   }
 
   /**
@@ -203,13 +229,13 @@ export class SceneUIManager {
     const { offsetX, offsetZ, isHeadshot } = options;
     
     // Calculate movement parameters - using absolute pixel values for more visibility
-    const baseRiseHeight = isHeadshot ? 180 : 120;  // Slightly increased rise height
+    const baseRiseHeight = isHeadshot ? SceneUIManager.HEADSHOT_RISE_HEIGHT : SceneUIManager.NORMAL_RISE_HEIGHT;
     
     // Return simplified style focused on color and scale, let CSS animation handle movement
     return `
-      font-size: ${scale * 48}px;
+      font-size: ${scale * SceneUIManager.BASE_FONT_SIZE}px;
       color: ${colorInfo.main};
-      text-shadow: 0 0 ${5 + colorInfo.intensity * 15}px ${colorInfo.glow};
+      text-shadow: 0 0 ${SceneUIManager.BASE_GLOW + colorInfo.intensity * SceneUIManager.GLOW_MULTIPLIER}px ${colorInfo.glow};
       --score-value: ${score};
       --intensity: ${colorInfo.intensity};
       /* Force hardware acceleration for smoother animations */
