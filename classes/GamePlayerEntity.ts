@@ -55,6 +55,8 @@ export default class GamePlayerEntity extends PlayerEntity {
   private _reviveInterval: NodeJS.Timer | undefined;
   private _reviveDistanceVectorA: Vector3;
   private _reviveDistanceVectorB: Vector3;
+  private _lastDamageTime: number = 0;
+  private readonly REGEN_DELAY_MS: number = 5000; // 5 seconds in milliseconds
 
   // Player entities always assign a PlayerController to the entity, so we can safely create a convenience getter
   public get playerController(): PlayerEntityController {
@@ -197,6 +199,9 @@ export default class GamePlayerEntity extends PlayerEntity {
     if (!this.isSpawned || !this.world || this.downed) {
       return;
     }
+
+    // Update the last damage time
+    this._lastDamageTime = Date.now();
 
     const healthAfterDamage = this.health - damage;
     if (this.health > 0 && healthAfterDamage <= 0) {
@@ -359,9 +364,13 @@ export default class GamePlayerEntity extends PlayerEntity {
         return;
       }
 
-      if (!this.downed && this.health < this.maxHealth) {
-        this.health += 1;
-        this._updatePlayerUIHealth();
+      const timeSinceLastDamage = Date.now() - this._lastDamageTime;
+      
+      if (!this.downed && 
+          this.health < this.maxHealth && 
+          timeSinceLastDamage >= this.REGEN_DELAY_MS) {
+          this.health += 1;
+          this._updatePlayerUIHealth();
       }
 
       this._autoHealTicker();
