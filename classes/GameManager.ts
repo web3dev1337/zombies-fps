@@ -375,7 +375,7 @@ export default class GameManager {
             health: Math.floor(baseHealth * bossHealthScaling * healthMultiplier),
             speed: Math.min(6, 2 + this.waveNumber * 0.2), // Reduced speed scaling
             damage: damage,
-            reward: Math.floor(1000 * this.waveNumber * rewardMultiplier),
+            reward: Math.floor(100* this.waveNumber * rewardMultiplier),
         });
         ripper.spawn(this.world, this._getSpawnPoint());
     }

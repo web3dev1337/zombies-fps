@@ -208,7 +208,7 @@ export default class EnemyEntity extends Entity {
       let rewardMultiplier = 1;
       if (isHeadshot) rewardMultiplier *= 2;
       
-      const moneyReward = (actualDamage / this.maxHealth) * this.reward * rewardMultiplier * 1.2; // 20% increase
+      const moneyReward = (actualDamage / this.maxHealth) * this.reward * rewardMultiplier;
       fromPlayer.addMoney(moneyReward);
       
       // Track kill if enemy dies
