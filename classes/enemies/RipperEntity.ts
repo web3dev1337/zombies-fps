@@ -44,7 +44,7 @@ export default class RipperEntity extends EnemyEntity {
     });
   }
 
-  public override takeDamage(damage: number, fromPlayer: GamePlayerEntity) {
+  public override takeDamage(damage: number, fromPlayer: GamePlayerEntity, isHeadshot?: boolean, hitPoint?: Vector3Like) {
     // Do the UI check first, because otherwise
     // takeDamage can trigger a despawn if health < 0
     this._updateBossUI({
@@ -53,7 +53,7 @@ export default class RipperEntity extends EnemyEntity {
       healthPercent: ((this.health - damage) / this.maxHealth) * 100,
     });
 
-    super.takeDamage(damage, fromPlayer);
+    super.takeDamage(damage, fromPlayer, isHeadshot, hitPoint);
   }
 
   private _updateBossUI(data = {}) {
