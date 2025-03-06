@@ -122,7 +122,7 @@ export default class GamePlayerEntity extends PlayerEntity {
       attachedToEntity: this,
       trackedEntity: this,
       type: LightType.SPOTLIGHT,
-      intensity: 5,
+      intensity: 4,
       offset: { x: 0, y: 0, z: 0.1 }, 
       color: { r: 255, g: 255, b: 255 },
     });
