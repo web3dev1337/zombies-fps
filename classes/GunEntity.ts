@@ -16,6 +16,7 @@ import type {
 
 import EnemyEntity from './EnemyEntity';
 import type GamePlayerEntity from './GamePlayerEntity';
+import { ZombieDeathEffects } from '../src/effects/ZombieDeathEffects';
 
 export type GunHand = 'left' | 'right' | 'both';
 
@@ -259,6 +260,19 @@ export default abstract class GunEntity extends Entity {
       
       // Apply damage with headshot information
       hitEntity.takeDamage(this.damage, parentPlayerEntity, isHeadshot, hitPoint);
+      
+      // Create hit effect
+      const hitDirection = {
+        x: hitPoint.x - origin.x,
+        y: hitPoint.y - origin.y,
+        z: hitPoint.z - origin.z
+      };
+      
+      // Create blood splatter effect at hit point
+      if (this.parent.world) {
+        const deathEffects = ZombieDeathEffects.getInstance(this.parent.world);
+        deathEffects.createHitEffect(hitPoint, hitDirection);
+      }
       
       // Play feedback sounds and visual effects
       if (this.parent.world && isHeadshot) {
