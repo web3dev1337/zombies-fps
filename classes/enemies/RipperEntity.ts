@@ -19,7 +19,7 @@ export default class RipperEntity extends EnemyEntity {
       idleAudioReferenceDistance: 8,
       jumpHeight: options.jumpHeight ?? 2,
       preferJumping: true,
-      reward: options.reward ?? 300,
+      reward: options.reward ?? 150,
       speed,
       controller: new PathfindingEntityController(),
       modelUri: 'models/npcs/ripper-boss.gltf',
