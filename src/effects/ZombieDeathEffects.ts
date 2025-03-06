@@ -1,8 +1,8 @@
 import { Entity, RigidBodyType, ColliderShape, World } from 'hytopia';
 import type { Vector3Like } from 'hytopia';
 
-// Particle appearance
-const PARTICLE_COUNT = 15;
+// Death effect configuration
+const PARTICLE_COUNT = 12;
 const PARTICLE_SCALE = 0.4;
 const PARTICLE_LIFETIME_MS = 2000;
 const PARTICLE_MODEL_URI = 'models/items/rotting-flesh.gltf';
@@ -122,6 +122,7 @@ export class ZombieDeathEffects {
                 name: 'ZombieGoreParticle',
                 modelUri: PARTICLE_MODEL_URI,
                 modelScale: scale,
+                ...(Math.abs(scale - HIT_PARTICLE_SCALE) < 0.001 ? { tintColor: { r: 255, g: 0, b: 0 } } : {}),
                 rigidBodyOptions: {
                     type: RigidBodyType.DYNAMIC,
                     colliders: [{
@@ -144,6 +145,7 @@ export class ZombieDeathEffects {
                 name: 'ZombieGoreParticle',
                 modelUri: PARTICLE_MODEL_URI,
                 modelScale: scale,
+                ...(Math.abs(scale - HIT_PARTICLE_SCALE) < 0.001 ? { tintColor: { r: 255, g: 0, b: 0 } } : {}),
                 rigidBodyOptions: {
                     type: RigidBodyType.DYNAMIC,
                     colliders: [{
@@ -171,6 +173,7 @@ export class ZombieDeathEffects {
                     name: 'ZombieGoreParticle',
                     modelUri: PARTICLE_MODEL_URI,
                     modelScale: scale,
+                    ...(Math.abs(scale - HIT_PARTICLE_SCALE) < 0.001 ? { tintColor: { r: 255, g: 0, b: 0 } } : {}),
                     rigidBodyOptions: {
                         type: RigidBodyType.DYNAMIC,
                         colliders: [{
@@ -231,6 +234,7 @@ export class ZombieDeathEffects {
                     name: 'ZombieGoreParticle',
                     modelUri: PARTICLE_MODEL_URI,
                     modelScale: PARTICLE_SCALE,
+                    ...(Math.abs(PARTICLE_SCALE - HIT_PARTICLE_SCALE) < 0.001 ? { tintColor: { r: 255, g: 0, b: 0 } } : {}),
                     rigidBodyOptions: {
                         type: RigidBodyType.DYNAMIC,
                         colliders: [{
