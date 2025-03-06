@@ -17,6 +17,7 @@ import type {
 import EnemyEntity from './EnemyEntity';
 import type GamePlayerEntity from './GamePlayerEntity';
 import { ZombieDeathEffects } from '../src/effects/ZombieDeathEffects';
+import GameAudioManager from './GameAudioManager';
 
 export type GunHand = 'left' | 'right' | 'both';
 
@@ -187,7 +188,8 @@ export default abstract class GunEntity extends Entity {
 
     this.ammo = 0; // set the ammo to 0 to prevent fire while reloading if clip wasn't empty.
     this._reloading = true;
-    this._reloadAudio.play(world, true);
+    // Reload sound is important feedback, make it priority
+    GameAudioManager.playPrioritySound(this._reloadAudio, world);
     this._updatePlayerUIReload();
 
     setTimeout(() => {
@@ -241,8 +243,8 @@ export default abstract class GunEntity extends Entity {
     // Update player ammo
     this._updatePlayerUIAmmo();
     
-    // Play shoot audio
-    this._shootAudio.play(this.parent.world, true);
+    // Play shoot audio - make it regular priority since it can happen frequently
+    GameAudioManager.playSound(this._shootAudio, this.parent.world);
   }
 
   /**
@@ -308,9 +310,9 @@ export default abstract class GunEntity extends Entity {
         // Apply damage with headshot information
         hitEntity.takeDamage(actualDamage, parentPlayerEntity, isHeadshot, hitPoint);
 
-        // Play hit marker sound
+        // Play hit marker sound - make it priority since it's important feedback
         if (this._hitMarkerAudio && this.parent.world) {
-          this._hitMarkerAudio.play(this.parent.world, true);
+          GameAudioManager.playPrioritySound(this._hitMarkerAudio, this.parent.world);
         }
         
         // Create hit effect
@@ -328,13 +330,13 @@ export default abstract class GunEntity extends Entity {
         
         // Play feedback sounds and visual effects
         if (this.parent.world && isHeadshot) {
-          // Play headshot sound
+          // Play headshot sound - make it priority since it's important feedback
           const headshotSound = new Audio({
             uri: 'audio/sfx/headshot.mp3',
             volume: 0.5,
             loop: false,
           });
-          headshotSound.play(this.parent.world, true);
+          GameAudioManager.playPrioritySound(headshotSound, this.parent.world);
           
           // Apply screen shake for headshots
           this._applyHeadshotFeedback(0.2);
