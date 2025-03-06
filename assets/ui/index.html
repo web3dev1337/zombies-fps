@@ -710,7 +710,47 @@
         }, damageData.duration || 1000);
       }
     }
+
+    if (type === 'scoreboard') {
+      updateScoreboard(data);
+    }
   });
+
+  // Add scoreboard handling
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      document.getElementById('scoreboard').style.display = 'flex';
+    }
+  });
+
+  document.addEventListener('keyup', (event) => {
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      document.getElementById('scoreboard').style.display = 'none';
+    }
+  });
+
+  // Update scoreboard data
+  function updateScoreboard(data) {
+    const scoreboardBody = document.getElementById('scoreboard-body');
+    scoreboardBody.innerHTML = '';
+    
+    data.players.forEach(player => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${player.name}</td>
+        <td>${player.kills}</td>
+        <td>${player.headshots}</td>
+        <td>$${player.money}</td>
+        <td>${player.revives}</td>
+        <td>${player.downs}</td>
+      `;
+      scoreboardBody.appendChild(row);
+    });
+    
+    document.getElementById('current-wave').textContent = data.wave;
+  }
 </script>
 
 <!-- UI Styles -->
@@ -1227,4 +1267,92 @@
     color: #ffffff;
     text-shadow: 2px 2px 2px rgba(0,0,0,0.5);
   }
+
+  .scoreboard {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: Arial, sans-serif;
+  }
+
+  .scoreboard-container {
+    background: rgba(40, 40, 40, 0.95);
+    border: 2px solid #666;
+    border-radius: 8px;
+    padding: 20px;
+    width: 80%;
+    max-width: 800px;
+  }
+
+  .scoreboard-container h2 {
+    color: #fff;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 24px;
+  }
+
+  .scoreboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+  }
+
+  .scoreboard-table th,
+  .scoreboard-table td {
+    padding: 12px;
+    text-align: center;
+    color: #fff;
+    border-bottom: 1px solid #444;
+  }
+
+  .scoreboard-table th {
+    background: rgba(0, 0, 0, 0.3);
+    font-weight: bold;
+  }
+
+  .scoreboard-table tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .wave-info {
+    text-align: center;
+    color: #fff;
+    font-size: 20px;
+  }
+
+  .wave-info h3 {
+    margin: 0;
+    color: #ffcc00;
+  }
 </style>
+
+<!-- Scoreboard Template -->
+<div id="scoreboard" class="scoreboard" style="display: none;">
+  <div class="scoreboard-container">
+    <h2>Player Stats</h2>
+    <table class="scoreboard-table">
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>Kills</th>
+          <th>Headshots</th>
+          <th>Money</th>
+          <th>Revives</th>
+          <th>Downs</th>
+        </tr>
+      </thead>
+      <tbody id="scoreboard-body">
+      </tbody>
+    </table>
+    <div class="wave-info">
+      <h3>Wave: <span id="current-wave">1</span></h3>
+    </div>
+  </div>
+</div>

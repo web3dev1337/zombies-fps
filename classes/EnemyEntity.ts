@@ -211,6 +211,11 @@ export default class EnemyEntity extends Entity {
       const moneyReward = (actualDamage / this.maxHealth) * this.reward * rewardMultiplier;
       fromPlayer.addMoney(moneyReward);
       
+      // Track kill if enemy dies
+      if (this.health <= 0) {
+        fromPlayer.addKill(!!isHeadshot);
+      }
+      
       // Send appropriate UI notification
       if (fromPlayer && hitPoint) {
         // Create hit info for score calculation and display
@@ -235,64 +240,11 @@ export default class EnemyEntity extends Entity {
           damage: actualDamage,
           reward: moneyReward
         });
-        
-        // Display hit text in the world
-        if (this.world) {
-          let message = '';
-          let color = '';
-          
-          if (damageType === 'headshot') {
-            message = `HEADSHOT! +$${Math.floor(moneyReward)}`;
-            color = 'FF0000';
-          }
-          
-          if (message) {
-            this.world.chatManager.sendPlayerMessage(
-              fromPlayer.player, 
-              message, 
-              color
-            );
-          }
-        }
       }
     }
 
-    // Apply visual feedback based on hit type
-    if (this.isSpawned) {
-      // Apply red tint for all hits
-      this.setTintColor({ r: 255, g: 0, b: 0 });
-      
-      // Reset tint after 75ms
-      setTimeout(() => {
-        if (this.isSpawned) {
-          this.setTintColor({ r: 255, g: 255, b: 255 });
-        }
-      }, 75);
-      
-      // Apply screen shake for headshots
-      if (isHeadshot && fromPlayer) {
-        fromPlayer.player.ui.sendData({ 
-          type: 'screen_shake',
-          intensity: 0.2,
-          duration: 200
-        });
-      }
-    }
-
+    // Apply visual feedback and handle death
     if (this.health <= 0 && this.isSpawned) {
-      // Enemy is dead, give additional reward & despawn
-      if (fromPlayer) {
-        // Bonus for kill
-        const killBonus = this.reward * 0.5;
-        fromPlayer.addMoney(killBonus);
-        
-        // Notify of kill
-        fromPlayer.player.ui.sendData({ 
-          type: 'kill',
-          reward: killBonus
-        });
-      }
-      
       // Create death effect before despawning
       if (this.world) {
         const deathEffects = ZombieDeathEffects.getInstance(this.world);
