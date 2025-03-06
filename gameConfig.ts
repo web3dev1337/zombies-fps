@@ -73,7 +73,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Parlor (South)',
-    removalPrice: 75,
+    removalPrice: 200,
     position: { x: -8, y: 1.5, z: 18.5 },
     rotation: Quaternion.fromEuler(0, 90, 0),
     width: 3,
@@ -81,7 +81,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Dining Hall (South)',
-    removalPrice: 75,
+    removalPrice: 200,
     position: { x: 13, y: 1.5, z: 18.5 },
     rotation: Quaternion.fromEuler(0, 90, 0),
     width: 3,
@@ -89,7 +89,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Theater Room (West)',
-    removalPrice: 250,
+    removalPrice: 300,
     position: { x: -15, y: 1.5, z: 3 },
     rotation: Quaternion.fromEuler(0, 90, 0),
     width: 5,
@@ -97,7 +97,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Theater Room (East)',
-    removalPrice: 250,
+    removalPrice: 400,
     position: { x: 19, y: 1.5, z: 3 },
     rotation: Quaternion.fromEuler(0, 90, 0),
     width: 5,
@@ -105,7 +105,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Art Gallery (South)',
-    removalPrice: 500,
+    removalPrice: 400,
     position: { x: 26.5, y: 1.5, z: -2 },
     rotation: Quaternion.fromEuler(0, 0, 0),
     width: 5,
@@ -113,7 +113,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Kitchen (South)',
-    removalPrice: 500,
+    removalPrice: 400,
     position: { x: -22, y: 1.5, z: -2 },
     rotation: Quaternion.fromEuler(0, 0, 0),
     width: 5,
@@ -129,7 +129,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Treasure Room (West)',
-    removalPrice: 75,
+    removalPrice: 500,
     position: { x: -15, y: 1.5, z: -19 },
     rotation: Quaternion.fromEuler(0, 90, 0),
     width: 5,
@@ -137,7 +137,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Treasure Room (East)',
-    removalPrice: 75,
+    removalPrice: 500,
     position: { x: 20, y: 1.5, z: -19 },
     rotation: Quaternion.fromEuler(0, 90, 0),
     width: 5,
