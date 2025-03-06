@@ -8,8 +8,8 @@ export default class AR15Entity extends PistolEntity {
   public constructor(options: Partial<GunEntityOptions> = {}) {
     super({
       ammo: options.ammo ?? 30,
-      damage: options.damage ?? 15,
-      fireRate: options.fireRate ?? 15,
+      damage: options.damage ?? 25,
+      fireRate: options.fireRate ?? 12,
       iconImageUri: options.iconImageUri ?? 'icons/ar-15.png',
       idleAnimation: options.idleAnimation ?? 'idle_gun_both',
       name: options.name ?? 'AR-15',

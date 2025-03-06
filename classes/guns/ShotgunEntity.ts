@@ -8,7 +8,7 @@ export default class ShotgunEntity extends GunEntity {
   public constructor(options: Partial<GunEntityOptions> = {}) {
     super({
       ammo: options.ammo ?? 3,
-      damage: options.damage ?? 4, // damage per pellet
+      damage: options.damage ?? 7, // damage per pellet
       fireRate: options.fireRate ?? 1.3,
       hand: options.hand ?? 'right',
       iconImageUri: options.iconImageUri ?? 'icons/shotgun.png',

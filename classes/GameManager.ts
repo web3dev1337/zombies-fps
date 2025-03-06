@@ -13,9 +13,9 @@ import type { Player } from 'hytopia';
 const GAME_WAVE_INTERVAL_MS = 30 * 1000; // 30 seconds between waves
 const SLOWEST_SPAWN_INTERVAL_MS = 2000; // TEMPORARY: Faster initial spawn rate (Original: 4000)
 const FASTEST_SPAWN_INTERVAL_MS = 500; // TEMPORARY: Faster minimum spawn rate (Original: 750)
-const GAME_START_COUNTDOWN_S = 5; // 5 seconds delay before game starts
+const GAME_START_COUNTDOWN_S = 10; // 5 seconds delay before game starts
 const WAVE_SPAWN_INTERVAL_REDUCTION_MS = 400; // TEMPORARY: Faster spawn rate reduction per wave (Original: 300)
-const WAVE_DELAY_MS = 10000; // 10s between waves
+const WAVE_DELAY_MS = 8000; // 10s between waves
 
 export default class GameManager {
   public static readonly instance = new GameManager();
@@ -280,8 +280,8 @@ export default class GameManager {
     clearTimeout(this._enemySpawnTimeout);
 
     const zombie = new ZombieEntity({
-      health: 7 + (this.waveNumber * 0.25),
-      speed: Math.min(8, 3 + this.waveNumber * 0.4), // TEMPORARY: Faster speed increase per wave (Original: Math.min(6, 2 + this.waveNumber * 0.25))
+      health: Math.floor(50 * Math.pow(1.25, this.waveNumber - 1)),
+      speed: Math.min(8, 3 + Math.min(15, this.waveNumber) * 0.25),
     });
 
     zombie.spawn(this.world, this._getSpawnPoint());
@@ -314,9 +314,9 @@ export default class GameManager {
     
     if (this.waveNumber % 5 === 0) { // Spawn a ripper every 5 waves
       const ripper = new RipperEntity({
-        health: 50 * this.waveNumber,
+        health: 200 * this.waveNumber,
         speed: 2 + this.waveNumber * 0.25,
-        reward: 50 * this.waveNumber,
+        reward: 100 * this.waveNumber,
       });
       ripper.spawn(this.world, this._getSpawnPoint());
     }
