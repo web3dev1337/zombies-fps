@@ -315,10 +315,10 @@ export default class GameManager {
     
     if (this.waveNumber % 5 === 0) { // Spawn a ripper every 5 waves
       const ripper = new RipperEntity({
-        // Start at 1000 health and increase by 1000 each boss wave
-        health: 1000 + ((this.waveNumber - 5) * 200),
+        // Exponential health scaling starting at 2000
+        health: Math.floor(2000 * Math.pow(1.5, Math.floor(this.waveNumber / 5) - 1)),
         speed: 2 + this.waveNumber * 0.25,
-        reward: 200 * this.waveNumber,
+        reward: 500 * this.waveNumber, // Increased reward for tougher boss
       });
       ripper.spawn(this.world, this._getSpawnPoint());
     }
