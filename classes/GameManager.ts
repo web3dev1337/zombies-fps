@@ -327,7 +327,7 @@ export default class GameManager {
         // Start at 1000, keep exponential scaling
         health: Math.floor(1000 * Math.pow(1.5, Math.floor(this.waveNumber / 5) - 1)),
         speed: 2 + this.waveNumber * 0.25,
-        reward: 500 * this.waveNumber, // Increased reward for tougher boss
+        reward: 1000 * this.waveNumber, // Increased reward for 3 players
       });
       ripper.spawn(this.world, this._getSpawnPoint());
     }
