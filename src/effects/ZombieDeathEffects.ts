@@ -9,7 +9,7 @@ const PARTICLE_MODEL_URI = 'models/items/rotting-flesh.gltf';
 
 // Hit effect configuration
 const HIT_PARTICLE_COUNT = 5;         // Fewer particles for hits
-const HIT_PARTICLE_SCALE = 0.2;       // Smaller particles
+const HIT_PARTICLE_SCALE = 0.1;       // Half the previous size (was 0.2)
 const HIT_PARTICLE_LIFETIME_MS = 1000; // Shorter lifetime
 const HIT_FORCE_MULTIPLIER = 0.7;     // Less force for smaller particles
 const HIT_SPAWN_OFFSET_RANGE = 0.2;   // Tighter spread
