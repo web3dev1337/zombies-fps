@@ -45,6 +45,7 @@ export default class GamePlayerEntity extends PlayerEntity {
   public headshots: number = 0;
   public revives: number = 0;
   public downs: number = 0;
+  public score: number = 0; // Track total earnings as score
 
   private _damageAudio: Audio;
   private _downedSceneUI: SceneUI;
@@ -155,7 +156,9 @@ export default class GamePlayerEntity extends PlayerEntity {
   }
 
   public addMoney(amount: number) {
-    this.money += amount;
+    const roundedAmount = Math.round(amount);
+    this.money += roundedAmount;
+    this.score += roundedAmount; // Add to total score when earning money
     this._updatePlayerUIMoney();
   }
 
@@ -179,11 +182,12 @@ export default class GamePlayerEntity extends PlayerEntity {
   }
 
   public spendMoney(amount: number): boolean {
-    if (!this.world || this.money < amount) {
+    const roundedAmount = Math.round(amount);
+    if (!this.world || this.money < roundedAmount) {
       return false;
     }
 
-    this.money -= amount;
+    this.money -= roundedAmount;
     this._updatePlayerUIMoney();
     this._purchaseAudio.play(this.world, true);
     return true;
@@ -387,7 +391,8 @@ export default class GamePlayerEntity extends PlayerEntity {
         name: player.player.username,
         kills: player.kills,
         headshots: player.headshots,
-        money: player.money,
+        money: Math.round(player.money),
+        score: Math.round(player.score),
         revives: player.revives,
         downs: player.downs
       };

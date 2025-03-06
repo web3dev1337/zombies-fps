@@ -742,7 +742,8 @@
         <td>${player.name}</td>
         <td>${player.kills}</td>
         <td>${player.headshots}</td>
-        <td>$${player.money}</td>
+        <td>$${Math.round(player.money).toLocaleString()}</td>
+        <td>$${Math.round(player.score).toLocaleString()}</td>
         <td>${player.revives}</td>
         <td>${player.downs}</td>
       `;
@@ -1344,6 +1345,7 @@
           <th>Kills</th>
           <th>Headshots</th>
           <th>Money</th>
+          <th>Score</th>
           <th>Revives</th>
           <th>Downs</th>
         </tr>
