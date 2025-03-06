@@ -502,8 +502,8 @@
     onState(state => {
       if (!damageText || !state) return;
       
-      // Update damage text
-      damageText.textContent = `${state.isCritical ? '💥' : ''}${Math.round(state.amount)}`;
+      // Update damage text with floor instead of round
+      damageText.textContent = `${state.isCritical ? '💥' : ''}${Math.floor(state.amount)}`;
       
       // Apply custom style if provided
       if (state.style) {
