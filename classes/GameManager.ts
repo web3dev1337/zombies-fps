@@ -154,12 +154,12 @@ export default class GameManager {
       player.ui.sendData({ type: 'start' });
     });
 
-    // Spawn 200 zombies to test scaled pathfinding
-    this._spawnTestZombiesProgressive(200);
+    // Spawn  zombies to test scaled pathfinding
+    // this._spawnTestZombiesProgressive(200);
 
     // Comment out normal spawn loops for testing
-    // this._spawnLoop();
-    // this._waveLoop();
+    this._spawnLoop();
+    this._waveLoop();
   }
 
   private _spawnTestZombiesProgressive(totalCount: number) {
