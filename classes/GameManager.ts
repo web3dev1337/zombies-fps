@@ -294,13 +294,13 @@ export default class GameManager {
     let healthScaling;
     if (this.waveNumber <= 4) {
         // Early waves: normal scaling
-        healthScaling = Math.pow(1.15, this.waveNumber - 1);
+        healthScaling = Math.pow(1.10, this.waveNumber - 1);
     } else if (this.waveNumber <= 15) {
         // Waves 5-15: much reduced scaling
-        healthScaling = Math.pow(1.15, 4) + Math.pow(1.05, this.waveNumber - 4);
+        healthScaling = Math.pow(1.15, 4) + Math.pow(1.15, this.waveNumber - 4);
     } else {
         // Wave 15+: moderate scaling
-        healthScaling = Math.pow(1.15, 4) + Math.pow(1.05, 11) + Math.pow(1.08, this.waveNumber - 15);
+        healthScaling = Math.pow(1.2, 4) + Math.pow(1.20, 11) + Math.pow(1.08, this.waveNumber - 15);
     }
 
     const zombie = new ZombieEntity({
