@@ -31,64 +31,80 @@
     transform-origin: center center;
     perspective: 1000px;
     backface-visibility: hidden;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .damage-value {
+    position: relative;
+    display: inline-block;
+    transition: all 0.3s ease;
   }
 
   .damage-value.critical {
     color: #ff0000;
     font-size: 32px;
-    text-shadow: 0 0 10px #ff0000;
-    animation: criticalPulse 0.5s ease-out;
+    text-shadow: 
+      0 0 10px #ff0000,
+      0 0 20px #ff0000,
+      0 0 30px #ff0000;
+    animation: criticalPulse 0.5s ease-out, criticalShake 0.3s ease-out;
+  }
+
+  .damage-combo {
+    font-size: 0.7em;
+    opacity: 0.9;
+    font-family: 'Arial', sans-serif;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.6);
   }
 
   @keyframes floatUp {
     0% {
-      transform: translate(-50%, -50%) scale(var(--initial-scale));
-      opacity: var(--initial-opacity);
+      transform: translate(-50%, -50%) scale(0.5);
+      opacity: 0;
     }
     
-    /* Pop in and start rising */
-    15% {
-      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.2)) scale(var(--pop-scale));
-      opacity: var(--peak-opacity);
+    20% {
+      transform: translate(-50%, -60%) scale(1.2);
+      opacity: 1;
     }
     
-    /* Reach peak height */
-    30% {
-      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.3)) scale(1);
-      opacity: var(--peak-opacity);
+    50% {
+      transform: translate(-50%, -80%) scale(1);
+      opacity: 1;
     }
     
-    /* Hold at peak */
-    60% {
-      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.4)) scale(1);
-      opacity: var(--peak-opacity);
-    }
-    
-    /* Start fading */
-    85% {
-      transform: translate(-50%, calc(-50% - var(--rise-height) * 0.5)) scale(var(--final-scale));
-      opacity: var(--fade-opacity);
-    }
-    
-    /* Fade out completely */
     100% {
-      transform: translate(-50%, calc(-50% - var(--rise-height))) scale(var(--final-scale));
-      opacity: var(--final-opacity);
+      transform: translate(-50%, -120%) scale(0.8) rotate(var(--float-rotation, 0deg));
+      opacity: 0;
     }
   }
 
   @keyframes criticalPulse {
     0% {
       transform: scale(1);
-      text-shadow: 0 0 10px #ff0000;
     }
     50% {
-      transform: scale(var(--pop-scale));
-      text-shadow: 0 0 20px #ff0000;
+      transform: scale(1.4);
     }
     100% {
       transform: scale(1);
-      text-shadow: 0 0 10px #ff0000;
+    }
+  }
+
+  @keyframes criticalShake {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-4px);
+    }
+    75% {
+      transform: translateX(4px);
     }
   }
 
@@ -264,35 +280,55 @@
 
   // Function to show damage numbers
   function showDamageNumber(data) {
-    // Extract data from the nested structure
-    const { amount, isCritical, style, duration, worldPosition } = data.data || data;
+    const { amount, isCritical, style, duration, worldPosition, combo } = data.data || data;
     
-    // Convert world position to screen coordinates using the correct Hytopia method
     const screenPos = hytopia.toScreenPosition(worldPosition);
-    if (!screenPos) return; // Position is not visible on screen
+    if (!screenPos) return;
     
     const container = document.querySelector('.damage-numbers-container');
     const damageEl = document.createElement('div');
     damageEl.className = 'damage-number';
     
+    // Get color based on damage amount and combo
+    const colorInfo = ColorSystem.getScoreColor(amount);
+    const comboColor = combo > 1 ? ColorSystem.getComboColor(combo) : null;
+    
+    // Create the main damage value element
     const valueEl = document.createElement('span');
     valueEl.className = `damage-value${isCritical ? ' critical' : ''}`;
     valueEl.textContent = Math.floor(amount);
     
+    // Apply dynamic color and glow based on damage
+    valueEl.style.color = colorInfo.main;
+    valueEl.style.textShadow = `0 0 ${colorInfo.intensity * 5}px ${colorInfo.glow}`;
+    
+    // Add combo indicator if there's a combo
+    if (combo > 1) {
+      const comboEl = document.createElement('span');
+      comboEl.className = 'damage-combo';
+      comboEl.textContent = `x${combo}`;
+      comboEl.style.color = comboColor.main;
+      comboEl.style.textShadow = `0 0 ${comboColor.intensity * 3}px ${comboColor.glow}`;
+      damageEl.appendChild(comboEl);
+    }
+    
+    // Add random rotation for variety
+    damageEl.style.setProperty('--float-rotation', `${(Math.random() * 20 - 10)}deg`);
+    
     damageEl.appendChild(valueEl);
     
-    // Position the damage number at the screen coordinates
+    // Position the damage number
     damageEl.style.left = `${screenPos.x}px`;
     damageEl.style.top = `${screenPos.y}px`;
     
-    // Apply the dynamic style if provided
+    // Apply any additional custom styles
     if (style) {
       damageEl.style.cssText += style;
     }
     
     container.appendChild(damageEl);
     
-    // Remove the element after animation completes
+    // Remove after animation
     setTimeout(() => {
       damageEl.remove();
     }, duration || 1000);

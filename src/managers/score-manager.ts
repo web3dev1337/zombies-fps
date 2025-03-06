@@ -22,6 +22,18 @@ interface PlayerStats {
   lastHitTime: number;
   multiHitCount: number;
   lastMultiHitTime: number;
+  totalDamage: number;
+  highestCombo: number;
+}
+
+/**
+ * Interface for score calculation result
+ */
+interface ScoreResult {
+  score: number;
+  combo: number;
+  isComboExtended: boolean;
+  comboMultiplier: number;
 }
 
 /**
@@ -38,7 +50,9 @@ export class ScoreManager {
     COMBO_TIMEOUT_MS: 2000,
     MULTI_HIT_TIMEOUT_MS: 500,
     MAX_COMBO_BONUS: 2.0,
-    MAX_MULTI_HIT_BONUS: 1.5
+    MAX_MULTI_HIT_BONUS: 1.5,
+    COMBO_SCORE_MULTIPLIER: 0.1, // 10% bonus per combo level
+    MAX_COMBO_MULTIPLIER: 3.0    // Cap at 3x score
   };
 
   private playerStats: Map<string, PlayerStats> = new Map();
@@ -55,18 +69,33 @@ export class ScoreManager {
   /**
    * Calculate score based on hit information
    */
-  public calculateScore(hit: HitInfo): number {
+  public calculateScore(hit: HitInfo): ScoreResult {
     const baseScore = ScoreManager.SCORING_CONFIG.BASE_SCORE;
     const distanceBonus = this.calculateDistanceBonus(hit.distance);
     const speedBonus = this.calculateSpeedBonus(hit.targetSpeed);
-    const comboBonus = this.calculateComboBonus(hit.playerId);
+    const { combo, isComboExtended } = this.updateCombo(hit.playerId);
+    const comboMultiplier = this.calculateComboMultiplier(combo);
     const headshotBonus = hit.isHeadshot ? ScoreManager.SCORING_CONFIG.HEADSHOT_MULTIPLIER - 1 : 0;
     
-    // Update player combo stats
-    this.updateCombo(hit.playerId);
+    // Calculate base score with bonuses
+    const baseScoreWithBonuses = baseScore * (1 + distanceBonus + speedBonus + headshotBonus);
     
-    // Calculate final score with all bonuses
-    return Math.round(baseScore * (1 + distanceBonus + speedBonus + comboBonus + headshotBonus));
+    // Apply combo multiplier to final score
+    const finalScore = Math.round(baseScoreWithBonuses * comboMultiplier);
+    
+    // Update player stats
+    const stats = this.getPlayerStats(hit.playerId);
+    stats.totalDamage += hit.damage;
+    if (combo > stats.highestCombo) {
+      stats.highestCombo = combo;
+    }
+    
+    return {
+      score: finalScore,
+      combo,
+      isComboExtended,
+      comboMultiplier
+    };
   }
 
   /**
@@ -84,33 +113,28 @@ export class ScoreManager {
   }
 
   /**
-   * Calculate bonus based on combo
+   * Calculate score multiplier based on combo
    */
-  private calculateComboBonus(playerId: string): number {
-    const stats = this.getPlayerStats(playerId);
-    const comboFactor = Math.min((stats.combo - 1) * 0.1, ScoreManager.SCORING_CONFIG.MAX_COMBO_BONUS);
-    
-    // Add multi-hit bonus if applicable
-    const multiHitFactor = Math.min((stats.multiHitCount - 1) * 0.2, ScoreManager.SCORING_CONFIG.MAX_MULTI_HIT_BONUS);
-    
-    return comboFactor + multiHitFactor;
+  private calculateComboMultiplier(combo: number): number {
+    const multiplier = 1 + ((combo - 1) * ScoreManager.SCORING_CONFIG.COMBO_SCORE_MULTIPLIER);
+    return Math.min(multiplier, ScoreManager.SCORING_CONFIG.MAX_COMBO_MULTIPLIER);
   }
 
   /**
    * Update player combo stats
    */
-  private updateCombo(playerId: string): void {
+  private updateCombo(playerId: string): { combo: number, isComboExtended: boolean } {
     const stats = this.getPlayerStats(playerId);
     const currentTime = Date.now();
+    const isComboExtended = currentTime - stats.lastHitTime <= ScoreManager.SCORING_CONFIG.COMBO_TIMEOUT_MS;
     
-    // Update combo if within timeout window
-    if (currentTime - stats.lastHitTime <= ScoreManager.SCORING_CONFIG.COMBO_TIMEOUT_MS) {
+    if (isComboExtended) {
       stats.combo++;
     } else {
       stats.combo = 1;
     }
     
-    // Update multi-hit if within multi-hit timeout window
+    // Update multi-hit tracking
     if (currentTime - stats.lastMultiHitTime <= ScoreManager.SCORING_CONFIG.MULTI_HIT_TIMEOUT_MS) {
       stats.multiHitCount++;
     } else {
@@ -119,6 +143,8 @@ export class ScoreManager {
     
     stats.lastHitTime = currentTime;
     stats.lastMultiHitTime = currentTime;
+    
+    return { combo: stats.combo, isComboExtended };
   }
 
   /**
@@ -130,7 +156,9 @@ export class ScoreManager {
         combo: 0,
         lastHitTime: 0,
         multiHitCount: 0,
-        lastMultiHitTime: 0
+        lastMultiHitTime: 0,
+        totalDamage: 0,
+        highestCombo: 0
       });
     }
     return this.playerStats.get(playerId)!;
@@ -141,6 +169,13 @@ export class ScoreManager {
    */
   public getCombo(playerId: string): number {
     return this.getPlayerStats(playerId).combo;
+  }
+
+  /**
+   * Get highest combo achieved by a player
+   */
+  public getHighestCombo(playerId: string): number {
+    return this.getPlayerStats(playerId).highestCombo;
   }
 
   /**
@@ -156,6 +191,15 @@ export class ScoreManager {
    * Check if combo is active for a player
    */
   public hasActiveCombo(playerId: string): boolean {
-    return this.getPlayerStats(playerId).combo > 1;
+    const stats = this.getPlayerStats(playerId);
+    return stats.combo > 1 && 
+           (Date.now() - stats.lastHitTime) <= ScoreManager.SCORING_CONFIG.COMBO_TIMEOUT_MS;
+  }
+
+  /**
+   * Get total damage dealt by a player
+   */
+  public getTotalDamage(playerId: string): number {
+    return this.getPlayerStats(playerId).totalDamage;
   }
 } 

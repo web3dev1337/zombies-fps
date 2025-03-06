@@ -65,7 +65,7 @@ export const INVISIBLE_WALLS = [
 export const PURCHASE_BARRIERS = [
   {
     name: 'Theater Room (South)',
-    removalPrice: 300,
+    removalPrice: 500,
     position: { x: 2.5, y: 1.5, z: 15 },
     rotation: Quaternion.fromEuler(0, 0, 0),
     width: 5,
@@ -105,7 +105,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Art Gallery (South)',
-    removalPrice: 500,
+    removalPrice: 600,
     position: { x: 26.5, y: 1.5, z: -2 },
     rotation: Quaternion.fromEuler(0, 0, 0),
     width: 5,
@@ -113,7 +113,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Kitchen (South)',
-    removalPrice: 500,
+    removalPrice: 600,
     position: { x: -22, y: 1.5, z: -2 },
     rotation: Quaternion.fromEuler(0, 0, 0),
     width: 5,
@@ -129,7 +129,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Treasure Room (West)',
-    removalPrice: 75,
+    removalPrice: 100,
     position: { x: -15, y: 1.5, z: -19 },
     rotation: Quaternion.fromEuler(0, 90, 0),
     width: 5,
@@ -137,7 +137,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Treasure Room (East)',
-    removalPrice: 75,
+    removalPrice: 100,
     position: { x: 20, y: 1.5, z: -19 },
     rotation: Quaternion.fromEuler(0, 90, 0),
     width: 5,

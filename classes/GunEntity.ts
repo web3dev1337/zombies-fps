@@ -52,6 +52,7 @@ export default abstract class GunEntity extends Entity {
   private _reloadAudio: Audio;
   private _reloading: boolean = false;
   private _shootAudio: Audio;
+  private _hitMarkerAudio: Audio | undefined;
 
   // Add damage variation constants
   private static readonly DAMAGE_VARIATION_PERCENT = 0.1; // 10% variation
@@ -83,8 +84,16 @@ export default abstract class GunEntity extends Entity {
     this._shootAudio = new Audio({
       attachedToEntity: this,
       uri: options.shootAudioUri,
-      volume: 0.3,
+      volume: 0.2,
       referenceDistance: 8,
+    });
+
+    // Initialize hit marker audio
+    this._hitMarkerAudio = new Audio({
+      attachedToEntity: this,
+      uri: 'audio/sfx/damage/hit-marker.wav',
+      volume: 1.0,
+      loop: false,
     });
 
     if (options.parent) {
@@ -298,6 +307,11 @@ export default abstract class GunEntity extends Entity {
         
         // Apply damage with headshot information
         hitEntity.takeDamage(actualDamage, parentPlayerEntity, isHeadshot, hitPoint);
+
+        // Play hit marker sound
+        if (this._hitMarkerAudio && this.parent.world) {
+          this._hitMarkerAudio.play(this.parent.world, true);
+        }
         
         // Create hit effect
         const hitDirection = {
