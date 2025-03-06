@@ -1271,66 +1271,92 @@
 
   .scoreboard {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.85);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     z-index: 1000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
     font-family: Arial, sans-serif;
+    pointer-events: none;
   }
 
   .scoreboard-container {
-    background: rgba(40, 40, 40, 0.95);
-    border: 2px solid #666;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.5));
     border-radius: 8px;
-    padding: 20px;
-    width: 80%;
-    max-width: 800px;
+    padding: 15px;
+    min-width: 600px;
+    backdrop-filter: blur(5px);
   }
 
   .scoreboard-container h2 {
-    color: #fff;
+    color: #ffcc00;
     text-align: center;
-    margin-bottom: 20px;
-    font-size: 24px;
+    margin: 0 0 10px 0;
+    font-size: 20px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
   }
 
   .scoreboard-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
+    font-size: 14px;
   }
 
   .scoreboard-table th,
   .scoreboard-table td {
-    padding: 12px;
+    padding: 8px;
     text-align: center;
     color: #fff;
-    border-bottom: 1px solid #444;
   }
 
   .scoreboard-table th {
-    background: rgba(0, 0, 0, 0.3);
+    color: #88ccff;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     font-weight: bold;
+    padding-bottom: 12px;
+  }
+
+  .scoreboard-table td {
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
   }
 
   .scoreboard-table tr:nth-child(even) {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.03);
   }
 
   .wave-info {
     text-align: center;
     color: #fff;
-    font-size: 20px;
+    font-size: 16px;
+    margin-top: 5px;
   }
 
   .wave-info h3 {
     margin: 0;
     color: #ffcc00;
+    font-size: 16px;
+    text-shadow: 0 0 8px rgba(255, 204, 0, 0.5);
+  }
+
+  /* Add column-specific styles */
+  .scoreboard-table td:nth-child(4) { /* Money column */
+    color: #44ff44;
+    text-shadow: 0 0 8px rgba(68, 255, 68, 0.3);
+  }
+
+  .scoreboard-table td:nth-child(5) { /* Score column */
+    color: #ffcc00;
+    text-shadow: 0 0 8px rgba(255, 204, 0, 0.3);
+    font-weight: bold;
+  }
+
+  /* Hover effect for rows */
+  .scoreboard-table tr:hover {
+    background: rgba(255, 255, 255, 0.05);
   }
 </style>
 
