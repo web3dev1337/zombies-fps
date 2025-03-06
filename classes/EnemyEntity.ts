@@ -5,6 +5,7 @@ import {
   ModelRegistry,
   PathfindingEntityController,
   SceneUI,
+  CollisionGroup,
 } from 'hytopia';
 
 import type { 
@@ -78,6 +79,12 @@ export default class EnemyEntity extends Entity {
     this.preferJumping = options.preferJumping ?? false;
     this.reward = options.reward;
     this.speed = options.speed;
+
+    // Set up collision groups to prevent zombies from blocking each other's raycasts
+    this.setCollisionGroupsForSolidColliders({
+      belongsTo: [ CollisionGroup.ENTITY ],
+      collidesWith: [ CollisionGroup.BLOCK, CollisionGroup.PLAYER ],
+    });
 
     if (options.damageAudioUri) {
       this._damageAudio = new Audio({

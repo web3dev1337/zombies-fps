@@ -1,4 +1,4 @@
-import { Entity, RigidBodyType, ColliderShape, World } from 'hytopia';
+import { Entity, RigidBodyType, ColliderShape, World, CollisionGroup } from 'hytopia';
 import type { Vector3Like } from 'hytopia';
 
 // Death effect configuration
@@ -68,7 +68,8 @@ export class ZombieDeathEffects {
                         },
                         mass: PARTICLE_MASS,
                         friction: PARTICLE_FRICTION,
-                        bounciness: PARTICLE_BOUNCINESS
+                        bounciness: PARTICLE_BOUNCINESS,
+                        isSensor: true  // Make it a sensor to prevent raycast blocking
                     }]
                 }
             });
@@ -136,7 +137,8 @@ export class ZombieDeathEffects {
                         },
                         mass: PARTICLE_MASS,
                         friction: PARTICLE_FRICTION,
-                        bounciness: PARTICLE_BOUNCINESS
+                        bounciness: PARTICLE_BOUNCINESS,
+                        isSensor: true  // Make it a sensor to prevent raycast blocking
                     }]
                 }
             });
@@ -159,7 +161,8 @@ export class ZombieDeathEffects {
                         },
                         mass: PARTICLE_MASS,
                         friction: PARTICLE_FRICTION,
-                        bounciness: PARTICLE_BOUNCINESS
+                        bounciness: PARTICLE_BOUNCINESS,
+                        isSensor: true  // Make it a sensor to prevent raycast blocking
                     }]
                 }
             });
@@ -187,7 +190,8 @@ export class ZombieDeathEffects {
                             },
                             mass: PARTICLE_MASS,
                             friction: PARTICLE_FRICTION,
-                            bounciness: PARTICLE_BOUNCINESS
+                            bounciness: PARTICLE_BOUNCINESS,
+                            isSensor: true  // Make it a sensor to prevent raycast blocking
                         }]
                     }
                 });
@@ -248,7 +252,8 @@ export class ZombieDeathEffects {
                             },
                             mass: PARTICLE_MASS,
                             friction: PARTICLE_FRICTION,
-                            bounciness: PARTICLE_BOUNCINESS
+                            bounciness: PARTICLE_BOUNCINESS,
+                            isSensor: true  // Make it a sensor to prevent raycast blocking
                         }]
                     }
                 });
