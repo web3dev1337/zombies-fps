@@ -280,7 +280,8 @@ export default class GameManager {
     clearTimeout(this._enemySpawnTimeout);
 
     const zombie = new ZombieEntity({
-      health: Math.floor(50 * Math.pow(1.25, this.waveNumber - 1)),
+      // Base 15, roughly doubles every 5 waves
+      health: Math.floor(15 * Math.pow(1.15, this.waveNumber - 1)),
       speed: Math.min(8, 3 + Math.min(15, this.waveNumber) * 0.25),
     });
 
@@ -314,9 +315,10 @@ export default class GameManager {
     
     if (this.waveNumber % 5 === 0) { // Spawn a ripper every 5 waves
       const ripper = new RipperEntity({
-        health: 200 * this.waveNumber,
+        // Start at 1000 health and increase by 1000 each boss wave
+        health: 1000 + ((this.waveNumber - 5) * 200),
         speed: 2 + this.waveNumber * 0.25,
-        reward: 100 * this.waveNumber,
+        reward: 200 * this.waveNumber,
       });
       ripper.spawn(this.world, this._getSpawnPoint());
     }
