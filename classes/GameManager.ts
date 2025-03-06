@@ -16,6 +16,9 @@ const FASTEST_SPAWN_INTERVAL_MS = 110; // ~200 zombies per 22 seconds
 const GAME_START_COUNTDOWN_S = 25; // 5 seconds delay before game starts
 const WAVE_SPAWN_INTERVAL_REDUCTION_MS = 200; // Slower early scaling
 const WAVE_DELAY_MS = 8000; // 8s between waves
+const BASE_PLAYER_COUNT = 3; // Assuming a default BASE_PLAYER_COUNT
+const HEALTH_SCALING_PER_PLAYER = 0.1; // Assuming a default HEALTH_SCALING_PER_PLAYER
+const REWARD_SCALING_PER_PLAYER = 1.0; // Assuming a default REWARD_SCALING_PER_PLAYER
 
 export default class GameManager {
   public static readonly instance = new GameManager();
@@ -323,11 +326,25 @@ export default class GameManager {
     });
     
     if (this.waveNumber % 5 === 0) { // Spawn a ripper every 5 waves
+      const playerCount = this.world.entityManager.getAllPlayerEntities().length;
+      const additionalPlayers = Math.max(0, playerCount - BASE_PLAYER_COUNT);
+      const healthMultiplier = 1 + (additionalPlayers * HEALTH_SCALING_PER_PLAYER);
+      const rewardMultiplier = Math.max(0.5, 1 - (additionalPlayers * (1 - REWARD_SCALING_PER_PLAYER)));
+
+      // Calculate which boss this is (1st, 2nd, 3rd, etc.)
+      const bossNumber = Math.floor(this.waveNumber / 5);
+      
+      // First boss has 1/3 health, subsequent bosses scale normally
+      const baseHealth = bossNumber === 1 ? 333 : 1000; // 333 is roughly 1/3 of 1000
+
+      // Damage scales up with each boss appearance
+      const damage = 3 + (bossNumber - 1) * 2; // Starts at 3 damage, +2 each time
+
       const ripper = new RipperEntity({
-        // Start at 1000, keep exponential scaling
-        health: Math.floor(1000 * Math.pow(1.5, Math.floor(this.waveNumber / 5) - 1)),
+        health: Math.floor(baseHealth * Math.pow(1.5, bossNumber - 1) * healthMultiplier),
         speed: 2 + this.waveNumber * 0.25,
-        reward: 1000 * this.waveNumber, // Increased reward for 3 players
+        damage: damage,
+        reward: Math.floor(1000 * this.waveNumber * rewardMultiplier),
       });
       ripper.spawn(this.world, this._getSpawnPoint());
     }
