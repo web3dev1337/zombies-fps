@@ -97,7 +97,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Theater Room (East)',
-    removalPrice: 400,
+    removalPrice: 300,
     position: { x: 19, y: 1.5, z: 3 },
     rotation: Quaternion.fromEuler(0, 90, 0),
     width: 5,
@@ -105,7 +105,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Art Gallery (South)',
-    removalPrice: 400,
+    removalPrice: 350,
     position: { x: 26.5, y: 1.5, z: -2 },
     rotation: Quaternion.fromEuler(0, 0, 0),
     width: 5,
@@ -113,7 +113,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Kitchen (South)',
-    removalPrice: 400,
+    removalPrice: 350,
     position: { x: -22, y: 1.5, z: -2 },
     rotation: Quaternion.fromEuler(0, 0, 0),
     width: 5,

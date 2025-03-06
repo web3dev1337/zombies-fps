@@ -49,6 +49,9 @@ const STUCK_DURATION_THRESHOLD = 3000;  // How long to be "stuck" before trigger
 const BRUTE_FORCE_DURATION = 2000;     // How long to apply brute force movement
 const BRUTE_FORCE_SPEED_MULTIPLIER = 1.5; // Speed boost when using brute force
 
+// Add damage cooldown constant
+const DAMAGE_COOLDOWN_MS = 1000; // 1 second between damage applications
+
 export interface EnemyEntityOptions extends EntityOptions {
   damage: number;
   damageAudioUri?: string;
@@ -84,6 +87,7 @@ export default class EnemyEntity extends Entity {
   private _stuckStartTime = 0;
   private _isBruteForcing = false;
   private _bruteForceStartTime = 0;
+  private _lastDamageTime: { [playerId: string]: number } = {};
 
   public constructor(options: EnemyEntityOptions) {
     super({ ...options, tag: 'enemy' });
@@ -274,7 +278,14 @@ export default class EnemyEntity extends Entity {
       return;
     }
 
-    otherEntity.takeDamage(this.damage);
+    const now = Date.now();
+    const lastDamageTime = this._lastDamageTime[otherEntity.player.id] || 0;
+
+    // Check if enough time has passed since last damage
+    if (now - lastDamageTime >= DAMAGE_COOLDOWN_MS) {
+      otherEntity.takeDamage(this.damage);
+      this._lastDamageTime[otherEntity.player.id] = now;
+    }
   }
 
   /*
