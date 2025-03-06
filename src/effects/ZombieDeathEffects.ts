@@ -39,6 +39,9 @@ const SPAWN_HEIGHT_BOOST = 0.7;    // Increased height for better visibility
 const POOL_SIZE = 500;
 const MAX_ACTIVE_PARTICLES = 150;  // Maximum number of particles that can be active at once
 
+// Create a custom collision group for particles
+const PARTICLE_COLLISION_GROUP = CollisionGroup.GROUP_2; // Using GROUP_2 as it's likely unused
+
 export class ZombieDeathEffects {
     private activeParticles: Set<Entity> = new Set();
     private particlePool: Entity[] = [];
@@ -68,11 +71,17 @@ export class ZombieDeathEffects {
                         },
                         mass: PARTICLE_MASS,
                         friction: PARTICLE_FRICTION,
-                        bounciness: PARTICLE_BOUNCINESS,
-                        isSensor: true  // Make it a sensor to prevent raycast blocking
+                        bounciness: PARTICLE_BOUNCINESS
                     }]
                 }
             });
+
+            // Set collision groups for particles to collide with everything except raycasts
+            particle.setCollisionGroupsForSolidColliders({
+                belongsTo: [ PARTICLE_COLLISION_GROUP ],
+                collidesWith: [ CollisionGroup.BLOCK, CollisionGroup.ENTITY, PARTICLE_COLLISION_GROUP ] // Collide with blocks, entities, and other particles
+            });
+
             this.particlePool.push(particle);
         }
         console.log(`Particle pool preloaded with ${POOL_SIZE} particles`);
@@ -137,10 +146,15 @@ export class ZombieDeathEffects {
                         },
                         mass: PARTICLE_MASS,
                         friction: PARTICLE_FRICTION,
-                        bounciness: PARTICLE_BOUNCINESS,
-                        isSensor: true  // Make it a sensor to prevent raycast blocking
+                        bounciness: PARTICLE_BOUNCINESS
                     }]
                 }
+            });
+
+            // Set collision groups for new particles to collide with everything except raycasts
+            particle.setCollisionGroupsForSolidColliders({
+                belongsTo: [ PARTICLE_COLLISION_GROUP ],
+                collidesWith: [ CollisionGroup.BLOCK, CollisionGroup.ENTITY, PARTICLE_COLLISION_GROUP ] // Collide with blocks, entities, and other particles
             });
         } else if (particle.modelScale !== scale) {
             // If scale doesn't match, create new particle with correct scale
@@ -161,10 +175,15 @@ export class ZombieDeathEffects {
                         },
                         mass: PARTICLE_MASS,
                         friction: PARTICLE_FRICTION,
-                        bounciness: PARTICLE_BOUNCINESS,
-                        isSensor: true  // Make it a sensor to prevent raycast blocking
+                        bounciness: PARTICLE_BOUNCINESS
                     }]
                 }
+            });
+
+            // Set collision groups for new particles to collide with everything except raycasts
+            particle.setCollisionGroupsForSolidColliders({
+                belongsTo: [ PARTICLE_COLLISION_GROUP ],
+                collidesWith: [ CollisionGroup.BLOCK, CollisionGroup.ENTITY, PARTICLE_COLLISION_GROUP ] // Collide with blocks, entities, and other particles
             });
         } else {
             // Try to reset physics state
@@ -190,10 +209,15 @@ export class ZombieDeathEffects {
                             },
                             mass: PARTICLE_MASS,
                             friction: PARTICLE_FRICTION,
-                            bounciness: PARTICLE_BOUNCINESS,
-                            isSensor: true  // Make it a sensor to prevent raycast blocking
+                            bounciness: PARTICLE_BOUNCINESS
                         }]
                     }
+                });
+
+                // Set collision groups for new particles to collide with everything except raycasts
+                particle.setCollisionGroupsForSolidColliders({
+                    belongsTo: [ PARTICLE_COLLISION_GROUP ],
+                    collidesWith: [ CollisionGroup.BLOCK, CollisionGroup.ENTITY, PARTICLE_COLLISION_GROUP ] // Collide with blocks, entities, and other particles
                 });
             }
         }
@@ -252,11 +276,17 @@ export class ZombieDeathEffects {
                             },
                             mass: PARTICLE_MASS,
                             friction: PARTICLE_FRICTION,
-                            bounciness: PARTICLE_BOUNCINESS,
-                            isSensor: true  // Make it a sensor to prevent raycast blocking
+                            bounciness: PARTICLE_BOUNCINESS
                         }]
                     }
                 });
+
+                // Set collision groups for new particles to collide with everything except raycasts
+                newParticle.setCollisionGroupsForSolidColliders({
+                    belongsTo: [ PARTICLE_COLLISION_GROUP ],
+                    collidesWith: [ CollisionGroup.BLOCK, CollisionGroup.ENTITY, PARTICLE_COLLISION_GROUP ] // Collide with blocks, entities, and other particles
+                });
+
                 this.particlePool.push(newParticle);
             }
             console.log(`Created ${toCreate} new particles, pool size now: ${this.particlePool.length}/${POOL_SIZE}`);
