@@ -117,8 +117,8 @@ export default class GamePlayerEntity extends PlayerEntity {
 
     // Setup light
     this._light = new Light({
-      angle: Math.PI / 4 + 0.1,
-      penumbra: 0.03,
+      angle: Math.PI / 3.5 + 0.1,
+      penumbra: 0.1,
       attachedToEntity: this,
       trackedEntity: this,
       type: LightType.SPOTLIGHT,

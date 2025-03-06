@@ -8,7 +8,7 @@ startServer(world => {
   world.loadMap(worldMap);
 
   // Setup lighting
-  world.setAmbientLightIntensity(0.0001);
+  world.setAmbientLightIntensity(0.0003);
   world.setAmbientLightColor({ r: 255, g: 192, b: 192 });
   world.setDirectionalLightIntensity(0.0001);
 
