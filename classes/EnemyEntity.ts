@@ -39,7 +39,7 @@ const WALL_CHECK_DISTANCE = 1.5;  // How far to check for walls
 const WALL_AVOID_FORCE = 0.8;     // How strongly to avoid walls
 
 // Dynamic pathfinding scaling
-const MAX_PATHFINDERS_PER_TICK = 30;  // Reduced to allow more CPU for movement
+const MAX_PATHFINDERS_PER_TICK = 20;  // Reduced to allow more CPU for movement
 let currentTick = 0;
 
 // Add these constants near the top with other constants
