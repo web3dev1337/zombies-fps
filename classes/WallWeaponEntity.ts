@@ -68,7 +68,7 @@ export default class WallWeaponEntity extends InteractableEntity {
     // Create purchase UI with pulsing effect
     this._purchaseSceneUI = new SceneUI({
       attachedToEntity: this,
-      offset: { x: 0, y: 2, z: 0 }, // Raised from 1.5 to 2 for better visibility
+      offset: { x: 0, y: 1.5, z: 0 },
       templateId: 'purchase-label',
       viewDistance: 8,
       state: {
