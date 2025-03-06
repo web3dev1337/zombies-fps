@@ -11,7 +11,7 @@ export default class RipperEntity extends EnemyEntity {
     const animation = speed > 6 ? 'animation.ripper_zombie.sprint' : 'animation.ripper_zombie.walk';
 
     super({
-      damage: options.damage ?? 6,
+      damage: options.damage ?? 3,
       damageAudioUri: options.damageAudioUri ?? 'audio/sfx/entity/zombie/zombie-hurt.mp3',
       health: options.health ?? 300,
       idleAudioUri: options.idleAudioUri ?? 'audio/sfx/ripper-idle.mp3',
