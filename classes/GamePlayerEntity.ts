@@ -70,13 +70,6 @@ export default class GamePlayerEntity extends PlayerEntity {
       name: 'Player',
       modelUri: 'models/players/soldier-player.gltf',
       modelScale: 0.5,
-      rigidBodyOptions: {
-        colliders: [{
-          shape: ColliderShape.CYLINDER,
-          radius: 0.75,  // 1.5x the default radius
-          halfHeight: 0.5  // Keep default height
-        }]
-      }
     });
     
     // Prevent mouse left click from being cancelled, required
