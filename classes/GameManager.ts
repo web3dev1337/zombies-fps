@@ -312,18 +312,22 @@ export default class GameManager {
 
     zombie.spawn(this.world, this._getSpawnPoint());
 
-    // Modified spawn interval calculation with 30% fewer zombies
+    // Modified spawn interval calculation for more zombies from wave 10+
     let spawnInterval;
     if (this.waveNumber <= 4) {
-        // Waves 1-4: Slower base spawning
+        // Waves 1-4: Keep the same slower base spawning
         spawnInterval = SLOWEST_SPAWN_INTERVAL_MS - (this.waveNumber * WAVE_SPAWN_INTERVAL_REDUCTION_MS);
-    } else if (this.waveNumber <= 15) {
-        // Waves 5-15: Much slower scaling
+    } else if (this.waveNumber <= 9) {
+        // Waves 5-9: Slightly faster than before
         const baseInterval = SLOWEST_SPAWN_INTERVAL_MS - (4 * WAVE_SPAWN_INTERVAL_REDUCTION_MS);
-        spawnInterval = baseInterval - ((this.waveNumber - 4) * (WAVE_SPAWN_INTERVAL_REDUCTION_MS * 0.4));
+        spawnInterval = baseInterval - ((this.waveNumber - 4) * (WAVE_SPAWN_INTERVAL_REDUCTION_MS * 0.5)); // Increased from 0.4 to 0.5
+    } else if (this.waveNumber <= 15) {
+        // Waves 10-15: Much more aggressive scaling
+        const baseInterval = 1200; // Start from a lower base interval at wave 10
+        spawnInterval = baseInterval - ((this.waveNumber - 9) * 100); // Reduce by 100ms per wave
     } else {
-        // Wave 15+: Moderate scaling
-        spawnInterval = Math.max(FASTEST_SPAWN_INTERVAL_MS, 780 - ((this.waveNumber - 15) * 50)); // Increased minimum by 30%
+        // Wave 15+: Very aggressive scaling
+        spawnInterval = Math.max(FASTEST_SPAWN_INTERVAL_MS, 600 - ((this.waveNumber - 15) * 75)); // More aggressive reduction
     }
     
     // Apply player count scaling to spawn interval
