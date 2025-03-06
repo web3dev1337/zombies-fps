@@ -224,7 +224,7 @@ export const WALL_WEAPONS = [
     name: 'Wall AK-47',
     position: { x: 0.5, y: 2.5, z: -29.8 },
     rotation: Quaternion.fromEuler(0, 90, 0),
-    price: 1000,
+    price: 1500,
     weaponClass: AK47Entity,
     modelUri: 'models/items/ak-47.glb',
     displayOffset: { x: 0, y: 0.5, z: 0.3 },
