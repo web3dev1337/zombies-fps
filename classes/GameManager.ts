@@ -11,10 +11,10 @@ import type EnemyEntity from './EnemyEntity';
 import type { Player } from 'hytopia';
 
 const GAME_WAVE_INTERVAL_MS = 30 * 1000; // 30 seconds between waves
-const SLOWEST_SPAWN_INTERVAL_MS = 1500; // Start faster - 1.5 seconds between zombies
+const SLOWEST_SPAWN_INTERVAL_MS = 2000; // Slower start - 2 seconds between zombies
 const FASTEST_SPAWN_INTERVAL_MS = 110; // ~200 zombies per 22 seconds
 const GAME_START_COUNTDOWN_S = 10; // 5 seconds delay before game starts
-const WAVE_SPAWN_INTERVAL_REDUCTION_MS = 250; // Much faster early scaling
+const WAVE_SPAWN_INTERVAL_REDUCTION_MS = 200; // Slower early scaling
 const WAVE_DELAY_MS = 8000; // 8s between waves
 
 export default class GameManager {
@@ -280,16 +280,16 @@ export default class GameManager {
     clearTimeout(this._enemySpawnTimeout);
 
     const zombie = new ZombieEntity({
-      health: Math.floor(15 * Math.pow(1.15, this.waveNumber - 1)),
+      health: Math.floor(10 * Math.pow(1.15, this.waveNumber - 1)), // Reduced base health from 15 to 10
       speed: Math.min(8, 3 + Math.min(15, this.waveNumber) * 0.25),
     });
 
     zombie.spawn(this.world, this._getSpawnPoint());
 
-    // Modified spawn interval calculation for faster early scaling
+    // Modified spawn interval calculation for slower early scaling
     let spawnInterval;
     if (this.waveNumber <= 5) {
-      // Waves 1-5: Much faster scaling
+      // Waves 1-5: Much slower scaling
       spawnInterval = SLOWEST_SPAWN_INTERVAL_MS - (this.waveNumber * WAVE_SPAWN_INTERVAL_REDUCTION_MS);
     } else {
       // After wave 5: Continue aggressive scaling
