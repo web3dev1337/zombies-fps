@@ -19,6 +19,7 @@ const WAVE_DELAY_MS = 8000; // 8s between waves
 const BASE_PLAYER_COUNT = 3; // Assuming a default BASE_PLAYER_COUNT
 const HEALTH_SCALING_PER_PLAYER = 0.1; // Assuming a default HEALTH_SCALING_PER_PLAYER
 const REWARD_SCALING_PER_PLAYER = 1.0; // Assuming a default REWARD_SCALING_PER_PLAYER
+const SPAWN_RATE_SCALING_PER_PLAYER = 0.05; // Assuming a default SPAWN_RATE_SCALING_PER_PLAYER
 
 export default class GameManager {
   public static readonly instance = new GameManager();
@@ -282,24 +283,53 @@ export default class GameManager {
 
     clearTimeout(this._enemySpawnTimeout);
 
+    // Get current player count for scaling
+    const playerCount = this.world.entityManager.getAllPlayerEntities().length;
+    const additionalPlayers = Math.max(0, playerCount - BASE_PLAYER_COUNT);
+    const healthMultiplier = 1 + (additionalPlayers * HEALTH_SCALING_PER_PLAYER);
+    const spawnRateMultiplier = 1 + (additionalPlayers * SPAWN_RATE_SCALING_PER_PLAYER);
+    const rewardMultiplier = Math.max(0.5, 1 - (additionalPlayers * (1 - REWARD_SCALING_PER_PLAYER)));
+
+    // Adjust health scaling for different wave ranges
+    let healthScaling;
+    if (this.waveNumber <= 4) {
+        // Early waves: normal scaling
+        healthScaling = Math.pow(1.15, this.waveNumber - 1);
+    } else if (this.waveNumber <= 15) {
+        // Waves 5-15: much reduced scaling
+        healthScaling = Math.pow(1.15, 4) + Math.pow(1.05, this.waveNumber - 4);
+    } else {
+        // Wave 15+: moderate scaling
+        healthScaling = Math.pow(1.15, 4) + Math.pow(1.05, 11) + Math.pow(1.08, this.waveNumber - 15);
+    }
+
     const zombie = new ZombieEntity({
-      health: Math.floor(10 * Math.pow(1.15, this.waveNumber - 1)), // Reduced base health from 15 to 10
-      speed: Math.min(8, 3 + Math.min(15, this.waveNumber) * 0.25),
+        health: Math.floor(10 * healthScaling * healthMultiplier),
+        // Reduce speed scaling
+        speed: Math.min(7, 3 + Math.min(12, this.waveNumber) * 0.2),
+        reward: Math.floor(10 * rewardMultiplier)
     });
 
     zombie.spawn(this.world, this._getSpawnPoint());
 
-    // Modified spawn interval calculation for slower early scaling
+    // Modified spawn interval calculation with easier middle waves
     let spawnInterval;
-    if (this.waveNumber <= 5) {
-      // Waves 1-5: Much slower scaling
-      spawnInterval = SLOWEST_SPAWN_INTERVAL_MS - (this.waveNumber * WAVE_SPAWN_INTERVAL_REDUCTION_MS);
+    if (this.waveNumber <= 4) {
+        // Waves 1-4: Normal early game scaling
+        spawnInterval = SLOWEST_SPAWN_INTERVAL_MS - (this.waveNumber * WAVE_SPAWN_INTERVAL_REDUCTION_MS);
+    } else if (this.waveNumber <= 15) {
+        // Waves 5-15: Much slower scaling
+        const baseInterval = SLOWEST_SPAWN_INTERVAL_MS - (4 * WAVE_SPAWN_INTERVAL_REDUCTION_MS);
+        spawnInterval = baseInterval - ((this.waveNumber - 4) * (WAVE_SPAWN_INTERVAL_REDUCTION_MS * 0.4));
     } else {
-      // After wave 5: Continue aggressive scaling
-      spawnInterval = Math.max(FASTEST_SPAWN_INTERVAL_MS, 500 - ((this.waveNumber - 5) * 100));
+        // Wave 15+: Moderate scaling
+        spawnInterval = Math.max(FASTEST_SPAWN_INTERVAL_MS, 600 - ((this.waveNumber - 15) * 50));
     }
     
-    const nextSpawn = Math.max(FASTEST_SPAWN_INTERVAL_MS, spawnInterval) + this.waveDelay;
+    // Apply player count scaling to spawn interval
+    spawnInterval = Math.max(FASTEST_SPAWN_INTERVAL_MS, spawnInterval / spawnRateMultiplier);
+    
+    const nextSpawn = spawnInterval + this.waveDelay;
 
     this._enemySpawnTimeout = setTimeout(() => this._spawnLoop(), nextSpawn);
     this.waveDelay = 0;
@@ -326,27 +356,28 @@ export default class GameManager {
     });
     
     if (this.waveNumber % 5 === 0) { // Spawn a ripper every 5 waves
-      const playerCount = this.world.entityManager.getAllPlayerEntities().length;
-      const additionalPlayers = Math.max(0, playerCount - BASE_PLAYER_COUNT);
-      const healthMultiplier = 1 + (additionalPlayers * HEALTH_SCALING_PER_PLAYER);
-      const rewardMultiplier = Math.max(0.5, 1 - (additionalPlayers * (1 - REWARD_SCALING_PER_PLAYER)));
+        const playerCount = this.world.entityManager.getAllPlayerEntities().length;
+        const additionalPlayers = Math.max(0, playerCount - BASE_PLAYER_COUNT);
+        const healthMultiplier = 1 + (additionalPlayers * HEALTH_SCALING_PER_PLAYER);
+        const rewardMultiplier = Math.max(0.5, 1 - (additionalPlayers * (1 - REWARD_SCALING_PER_PLAYER)));
 
-      // Calculate which boss this is (1st, 2nd, 3rd, etc.)
-      const bossNumber = Math.floor(this.waveNumber / 5);
-      
-      // First boss has 1/3 health, subsequent bosses scale normally
-      const baseHealth = bossNumber === 1 ? 333 : 1000; // 333 is roughly 1/3 of 1000
+        // Calculate which boss this is (1st, 2nd, 3rd, etc.)
+        const bossNumber = Math.floor(this.waveNumber / 5);
+        
+        // Reduced boss health scaling
+        const baseHealth = bossNumber === 1 ? 333 : 800; // Reduced from 1000 to 800
+        const bossHealthScaling = Math.pow(1.3, bossNumber - 1); // Reduced from 1.5 to 1.3
 
-      // Damage scales up with each boss appearance
-      const damage = 3 + (bossNumber - 1) * 2; // Starts at 3 damage, +2 each time
+        // Slower damage scaling
+        const damage = 3 + Math.floor((bossNumber - 1) * 1.5); // Reduced from +2 to +1.5 per appearance
 
-      const ripper = new RipperEntity({
-        health: Math.floor(baseHealth * Math.pow(1.5, bossNumber - 1) * healthMultiplier),
-        speed: 2 + this.waveNumber * 0.25,
-        damage: damage,
-        reward: Math.floor(1000 * this.waveNumber * rewardMultiplier),
-      });
-      ripper.spawn(this.world, this._getSpawnPoint());
+        const ripper = new RipperEntity({
+            health: Math.floor(baseHealth * bossHealthScaling * healthMultiplier),
+            speed: Math.min(6, 2 + this.waveNumber * 0.2), // Reduced speed scaling
+            damage: damage,
+            reward: Math.floor(1000 * this.waveNumber * rewardMultiplier),
+        });
+        ripper.spawn(this.world, this._getSpawnPoint());
     }
     
     this._waveTimeout = setTimeout(() => this._waveLoop(), GAME_WAVE_INTERVAL_MS);
