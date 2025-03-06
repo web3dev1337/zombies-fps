@@ -20,6 +20,7 @@ const BASE_PLAYER_COUNT = 3; // Assuming a default BASE_PLAYER_COUNT
 const HEALTH_SCALING_PER_PLAYER = 0.1; // Assuming a default HEALTH_SCALING_PER_PLAYER
 const REWARD_SCALING_PER_PLAYER = 1.0; // Assuming a default REWARD_SCALING_PER_PLAYER
 const SPAWN_RATE_SCALING_PER_PLAYER = 0.05; // Assuming a default SPAWN_RATE_SCALING_PER_PLAYER
+const MAX_ZOMBIE_COUNT = 100; // Maximum number of zombies allowed at once
 
 export default class GameManager {
   public static readonly instance = new GameManager();
@@ -283,6 +284,16 @@ export default class GameManager {
     if (!this.world) return; // type guard
 
     clearTimeout(this._enemySpawnTimeout);
+
+    // Check current zombie count
+    const currentZombieCount = this.world.entityManager.getEntitiesByTag('enemy').length;
+    
+    // Skip spawning if at max capacity
+    if (currentZombieCount >= MAX_ZOMBIE_COUNT) {
+        // Set a shorter timeout to check again soon
+        this._enemySpawnTimeout = setTimeout(() => this._spawnLoop(), 1000);
+        return;
+    }
 
     // Get current player count for scaling
     const playerCount = this.world.entityManager.getAllPlayerEntities().length;
