@@ -252,55 +252,82 @@ export default abstract class GunEntity extends Entity {
 
     const parentPlayerEntity = this.parent as GamePlayerEntity;
    
-    const raycastHit = this.parent.world.simulation.raycast(origin, direction, length, {
-      filterGroups: CollisionGroupsBuilder.buildRawCollisionGroups({
-        belongsTo: [ CollisionGroup.ALL ],
-        collidesWith: [ CollisionGroup.BLOCK, CollisionGroup.ENTITY ],
-      }),
-    });
+    // Perform multiple raycasts with slight offsets when zombies are close together
+    const offsets = [
+      { x: 0, y: 0 },      // Center
+      { x: 0.1, y: 0 },    // Slight right
+      { x: -0.1, y: 0 },   // Slight left
+    ];
 
-    if (!raycastHit) {
-      return;
-    }
-
-    const hitEntity = raycastHit.hitEntity;
-    const hitPoint = raycastHit.hitPoint;
-
-    if (hitEntity && hitEntity instanceof EnemyEntity) {
-      // Calculate damage with random variation
-      const actualDamage = this.calculateDamageWithVariation();
-      
-      // Check if it's a headshot based on hit position
-      const isHeadshot = hitEntity.isHeadshot(hitPoint);
-      
-      // Apply damage with headshot information
-      hitEntity.takeDamage(actualDamage, parentPlayerEntity, isHeadshot, hitPoint);
-      
-      // Create hit effect
-      const hitDirection = {
-        x: hitPoint.x - origin.x,
-        y: hitPoint.y - origin.y,
-        z: hitPoint.z - origin.z
+    for (const offset of offsets) {
+      const offsetDirection = {
+        x: direction.x + offset.x,
+        y: direction.y + offset.y,
+        z: direction.z
       };
-      
-      // Create blood splatter effect at hit point
-      if (this.parent.world) {
-        const deathEffects = ZombieDeathEffects.getInstance(this.parent.world);
-        deathEffects.createHitEffect(hitPoint, hitDirection);
-      }
-      
-      // Play feedback sounds and visual effects
-      if (this.parent.world && isHeadshot) {
-        // Play headshot sound
-        const headshotSound = new Audio({
-          uri: 'audio/sfx/headshot.mp3',
-          volume: 0.5,
-          loop: false,
-        });
-        headshotSound.play(this.parent.world, true);
+
+      // Normalize the direction
+      const magnitude = Math.sqrt(
+        offsetDirection.x * offsetDirection.x +
+        offsetDirection.y * offsetDirection.y +
+        offsetDirection.z * offsetDirection.z
+      );
+
+      const normalizedDirection = {
+        x: offsetDirection.x / magnitude,
+        y: offsetDirection.y / magnitude,
+        z: offsetDirection.z / magnitude
+      };
+
+      const raycastHit = this.parent.world.simulation.raycast(origin, normalizedDirection, length, {
+        filterGroups: CollisionGroupsBuilder.buildRawCollisionGroups({
+          belongsTo: [ CollisionGroup.ALL ],
+          collidesWith: [ CollisionGroup.BLOCK, CollisionGroup.ENTITY ],
+        })
+      });
+
+      if (raycastHit?.hitEntity && raycastHit.hitEntity instanceof EnemyEntity) {
+        const hitEntity = raycastHit.hitEntity;
+        const hitPoint = raycastHit.hitPoint;
+
+        // Calculate damage with random variation
+        const actualDamage = this.calculateDamageWithVariation();
         
-        // Apply screen shake for headshots
-        this._applyHeadshotFeedback(0.2);
+        // Check if it's a headshot based on hit position
+        const isHeadshot = hitEntity.isHeadshot(hitPoint);
+        
+        // Apply damage with headshot information
+        hitEntity.takeDamage(actualDamage, parentPlayerEntity, isHeadshot, hitPoint);
+        
+        // Create hit effect
+        const hitDirection = {
+          x: hitPoint.x - origin.x,
+          y: hitPoint.y - origin.y,
+          z: hitPoint.z - origin.z
+        };
+        
+        // Create blood splatter effect at hit point
+        if (this.parent.world) {
+          const deathEffects = ZombieDeathEffects.getInstance(this.parent.world);
+          deathEffects.createHitEffect(hitPoint, hitDirection);
+        }
+        
+        // Play feedback sounds and visual effects
+        if (this.parent.world && isHeadshot) {
+          // Play headshot sound
+          const headshotSound = new Audio({
+            uri: 'audio/sfx/headshot.mp3',
+            volume: 0.5,
+            loop: false,
+          });
+          headshotSound.play(this.parent.world, true);
+          
+          // Apply screen shake for headshots
+          this._applyHeadshotFeedback(0.2);
+        }
+
+        // Exit after first successful hit
+        break;
       }
     }
   }

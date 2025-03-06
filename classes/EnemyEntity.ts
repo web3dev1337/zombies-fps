@@ -5,6 +5,7 @@ import {
   ModelRegistry,
   PathfindingEntityController,
   SceneUI,
+  CollisionGroup,
 } from 'hytopia';
 
 import type { 
@@ -22,6 +23,24 @@ import type { HitInfo } from '../src/managers/score-manager';
 
 const RETARGET_ACCUMULATOR_THRESHOLD_MS = 5000;
 const PATHFIND_ACCUMULATOR_THRESHOLD_MS = 3000;
+
+// Distance-based pathfinding optimization
+const CLOSE_RANGE = 4;      // Increased slightly to give more room for wall avoidance
+const MID_RANGE = 20;       // Increased to reduce pathfinding frequency
+const FAR_RANGE = 40;      // Keep far range the same
+
+// Speed multipliers for different ranges
+const CLOSE_RANGE_SPEED_MULTIPLIER = 1.2;
+const MID_RANGE_SPEED_MULTIPLIER = 0.9;    // Increased for better corner navigation
+const FAR_RANGE_SPEED_MULTIPLIER = 0.7;    // Increased slightly
+
+// Wall avoidance parameters
+const WALL_CHECK_DISTANCE = 1.5;  // How far to check for walls
+const WALL_AVOID_FORCE = 0.8;     // How strongly to avoid walls
+
+// Dynamic pathfinding scaling
+const MAX_PATHFINDERS_PER_TICK = 30;  // Reduced to allow more CPU for movement
+let currentTick = 0;
 
 export interface EnemyEntityOptions extends EntityOptions {
   damage: number;
@@ -64,6 +83,12 @@ export default class EnemyEntity extends Entity {
     this.preferJumping = options.preferJumping ?? false;
     this.reward = options.reward;
     this.speed = options.speed;
+
+    // Set up collision groups to prevent zombies from blocking each other's raycasts
+    this.setCollisionGroupsForSolidColliders({
+      belongsTo: [ CollisionGroup.ENTITY ],
+      collidesWith: [ CollisionGroup.BLOCK, CollisionGroup.PLAYER ],
+    });
 
     if (options.damageAudioUri) {
       this._damageAudio = new Audio({
@@ -295,9 +320,16 @@ export default class EnemyEntity extends Entity {
   private _onTick = (payload: EventPayloads[EntityEvent.TICK]) => {
     const { tickDeltaMs } = payload;
 
-    if (!this.isSpawned) {
+    if (!this.isSpawned || !this.world || !this.id) {
       return;
     }
+
+    // Get total zombie count and calculate cycle length
+    const totalZombies = this.world.entityManager.getEntitiesByTag('enemy').length;
+    const cycleLength = Math.max(20, Math.ceil(totalZombies / MAX_PATHFINDERS_PER_TICK));
+    
+    // Increment and wrap tick counter
+    currentTick = (currentTick + 1) % cycleLength;
 
     this._pathfindAccumulatorMs += tickDeltaMs;
     this._retargetAccumulatorMs += tickDeltaMs;
@@ -316,21 +348,60 @@ export default class EnemyEntity extends Entity {
     const targetDistance = this._getTargetDistance(this._targetEntity);
     const pathfindingController = this.controller as PathfindingEntityController;
 
-    if (targetDistance < 8 || (!this._isPathfinding && this._pathfindAccumulatorMs < PATHFIND_ACCUMULATOR_THRESHOLD_MS)) {
-      pathfindingController.move(this._targetEntity.position, this.speed);
-      pathfindingController.face(this._targetEntity.position, this.speed * 2);
-    } else if (this._pathfindAccumulatorMs > PATHFIND_ACCUMULATOR_THRESHOLD_MS) {
-      this._isPathfinding = pathfindingController.pathfind(this._targetEntity.position, this.speed, {
-        maxFall: this.jumpHeight,
-        maxJump: this.jumpHeight,
-        maxOpenSetIterations: 200,
-        verticalPenalty: this.preferJumping ? -1 : 1,
-        pathfindAbortCallback: () => this._isPathfinding = false,
-        pathfindCompleteCallback: () => this._isPathfinding = false,
-        waypointMoveSkippedCallback: () => this._isPathfinding = false,
-      });
+    // Very close range - use direct movement with wall avoidance
+    if (targetDistance <= CLOSE_RANGE) {
+      if (this._targetEntity?.position) {
+        const moveDirection = this._getWallAvoidanceDirection(this._targetEntity.position);
+        
+        // Apply wall-aware movement
+        pathfindingController.move(moveDirection, this.speed * CLOSE_RANGE_SPEED_MULTIPLIER);
+        pathfindingController.face(this._targetEntity.position, this.speed * 2);
+      }
+      return;
+    }
 
-      this._pathfindAccumulatorMs = 0;
+    // Check if it's this zombie's turn to pathfind
+    const mySlot = this.id % cycleLength;
+    const canPathfindThisTick = mySlot === currentTick;
+
+    if (targetDistance <= MID_RANGE) {
+      // Mid range - use full pathfinding when it's our turn
+      if (canPathfindThisTick && (this._pathfindAccumulatorMs > PATHFIND_ACCUMULATOR_THRESHOLD_MS || !this._isPathfinding)) {
+        if (this._targetEntity?.position) {
+          this._isPathfinding = pathfindingController.pathfind(this._targetEntity.position, this.speed * MID_RANGE_SPEED_MULTIPLIER, {
+            maxFall: this.jumpHeight * 2,      // Increased to handle larger gaps
+            maxJump: this.jumpHeight * 2,      // Increased to handle higher obstacles
+            maxOpenSetIterations: 400,         // Increased for better path finding
+            verticalPenalty: this.preferJumping ? 0.5 : 2,  // Adjusted for better vertical movement
+            pathfindAbortCallback: () => {
+              this._isPathfinding = false;
+              if (this._targetEntity?.position) {
+                // On pathfinding failure, try to move around obstacles
+                const moveDirection = this._getWallAvoidanceDirection(this._targetEntity.position);
+                pathfindingController.move(moveDirection, this.speed * MID_RANGE_SPEED_MULTIPLIER);
+              }
+            },
+            pathfindCompleteCallback: () => this._isPathfinding = false,
+          });
+          this._pathfindAccumulatorMs = 0;
+        }
+      } else if (this._targetEntity?.position && !this._isPathfinding) {
+        // Not our turn or pathfinding failed - use wall-aware movement
+        const moveDirection = this._getWallAvoidanceDirection(this._targetEntity.position);
+        pathfindingController.move(moveDirection, this.speed * MID_RANGE_SPEED_MULTIPLIER);
+      }
+    } else {
+      // Far range - use simple movement with basic wall avoidance
+      if (this._targetEntity?.position) {
+        const moveDirection = this._getWallAvoidanceDirection(this._targetEntity.position);
+        pathfindingController.move(moveDirection, this.speed * FAR_RANGE_SPEED_MULTIPLIER);
+      }
+    }
+
+    // Face target with appropriate speed
+    if (this._targetEntity?.position) {
+      const turnSpeed = targetDistance <= CLOSE_RANGE ? this.speed * 2 : this.speed;
+      pathfindingController.face(this._targetEntity.position, turnSpeed);
     }
   }
 
@@ -387,5 +458,79 @@ export default class EnemyEntity extends Entity {
    */
   private getSpeed(): number {
     return 0; // Simplified to avoid velocity check issues
+  }
+
+  /**
+   * Calculate a movement direction that avoids walls
+   * @param targetPosition The position we're trying to reach
+   * @returns Modified position that avoids walls
+   */
+  private _getWallAvoidanceDirection(targetPosition: Vector3Like): Vector3Like {
+    if (!this.world) return targetPosition;
+
+    // Calculate direction to target
+    const directionToTarget = {
+      x: targetPosition.x - this.position.x,
+      y: targetPosition.y - this.position.y,
+      z: targetPosition.z - this.position.z
+    };
+
+    // Normalize direction
+    const distance = Math.sqrt(directionToTarget.x * directionToTarget.x + directionToTarget.z * directionToTarget.z);
+    if (distance === 0) return targetPosition;
+
+    const normalizedDirection = {
+      x: directionToTarget.x / distance,
+      y: 0,
+      z: directionToTarget.z / distance
+    };
+
+    // Check for walls ahead and to the sides
+    const frontWallHit = this.world.simulation.raycast(
+      this.position,
+      normalizedDirection,
+      WALL_CHECK_DISTANCE
+    );
+
+    const rightWallHit = this.world.simulation.raycast(
+      this.position,
+      { x: normalizedDirection.z, y: 0, z: -normalizedDirection.x },
+      WALL_CHECK_DISTANCE
+    );
+
+    const leftWallHit = this.world.simulation.raycast(
+      this.position,
+      { x: -normalizedDirection.z, y: 0, z: normalizedDirection.x },
+      WALL_CHECK_DISTANCE
+    );
+
+    // Calculate avoidance direction
+    let avoidanceX = 0;
+    let avoidanceZ = 0;
+
+    if (frontWallHit) {
+      // Strong avoidance for frontal walls
+      avoidanceX -= normalizedDirection.x * WALL_AVOID_FORCE;
+      avoidanceZ -= normalizedDirection.z * WALL_AVOID_FORCE;
+    }
+
+    if (rightWallHit) {
+      // Add leftward avoidance
+      avoidanceX += normalizedDirection.z * WALL_AVOID_FORCE;
+      avoidanceZ -= normalizedDirection.x * WALL_AVOID_FORCE;
+    }
+
+    if (leftWallHit) {
+      // Add rightward avoidance
+      avoidanceX -= normalizedDirection.z * WALL_AVOID_FORCE;
+      avoidanceZ += normalizedDirection.x * WALL_AVOID_FORCE;
+    }
+
+    // Combine target direction with avoidance
+    return {
+      x: targetPosition.x + avoidanceX,
+      y: targetPosition.y,
+      z: targetPosition.z + avoidanceZ
+    };
   }
 }
