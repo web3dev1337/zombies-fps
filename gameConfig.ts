@@ -121,7 +121,7 @@ export const PURCHASE_BARRIERS = [
   },
   {
     name: 'Vault',
-    removalPrice: 1000,
+    removalPrice: 2000,
     position: { x: 0.5, y: 1.5, z: -26 },
     rotation: Quaternion.fromEuler(0, 0, 0),
     width: 3,
