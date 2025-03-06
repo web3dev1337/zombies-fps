@@ -180,6 +180,16 @@
       opacity: 0;
     }
   }
+
+  /* Add this to the existing scoreboard styles */
+  .scoreboard-table tr.current-player {
+    background: rgba(255, 255, 0, 0.1) !important;
+    border-left: 3px solid #ffcc00;
+  }
+
+  .scoreboard-table tr.current-player td {
+    font-weight: bold;
+  }
 </style>
 
 <!-- UI-->
@@ -774,6 +784,10 @@
     
     data.players.forEach(player => {
       const row = document.createElement('tr');
+      // Add current-player class if this is the current player
+      if (player.isCurrentPlayer) {
+        row.classList.add('current-player');
+      }
       row.innerHTML = `
         <td>${player.name}</td>
         <td>${player.kills}</td>
