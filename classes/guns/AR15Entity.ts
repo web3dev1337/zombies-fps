@@ -8,7 +8,7 @@ export default class AR15Entity extends PistolEntity {
   public constructor(options: Partial<GunEntityOptions> = {}) {
     super({
       ammo: options.ammo ?? 30,
-      damage: options.damage ?? 4,
+      damage: options.damage ?? 6,
       fireRate: options.fireRate ?? 15,
       iconImageUri: options.iconImageUri ?? 'icons/ar-15.png',
       idleAnimation: options.idleAnimation ?? 'idle_gun_both',
@@ -16,7 +16,7 @@ export default class AR15Entity extends PistolEntity {
       maxAmmo: options.maxAmmo ?? 30,
       modelUri: options.modelUri ?? 'models/items/ar-15.glb',
       reloadAudioUri: options.reloadAudioUri ?? 'audio/sfx/rifle-reload.mp3',
-      reloadTimeMs: options.reloadTimeMs ?? 1500,
+      reloadTimeMs: options.reloadTimeMs ?? 2000,
       shootAnimation: options.shootAnimation ?? 'shoot_gun_both',
       shootAudioUri: options.shootAudioUri ?? 'audio/sfx/rifle-shoot.mp3',
       ...options,

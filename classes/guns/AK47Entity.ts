@@ -8,7 +8,7 @@ export default class AK47Entity extends PistolEntity {
   public constructor(options: Partial<GunEntityOptions> = {}) {
     super({
       ammo: options.ammo ?? 30,
-      damage: options.damage ?? 3,
+      damage: options.damage ?? 10,
       fireRate: options.fireRate ?? 10,
       iconImageUri: options.iconImageUri ?? 'icons/ak-47.png',
       idleAnimation: options.idleAnimation ?? 'idle_gun_both',
@@ -16,7 +16,7 @@ export default class AK47Entity extends PistolEntity {
       maxAmmo: options.maxAmmo ?? 30,
       modelUri: options.modelUri ?? 'models/items/ak-47.glb',
       reloadAudioUri: options.reloadAudioUri ?? 'audio/sfx/rifle-reload.mp3',
-      reloadTimeMs: options.reloadTimeMs ?? 1500,
+      reloadTimeMs: options.reloadTimeMs ?? 2000,
       shootAnimation: options.shootAnimation ?? 'shoot_gun_both',
       shootAudioUri: options.shootAudioUri ?? 'audio/sfx/rifle-shoot.mp3',
       ...options,
