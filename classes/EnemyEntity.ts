@@ -34,7 +34,7 @@ const MID_RANGE_SPEED_MULTIPLIER = 0.8;    // Slightly reduced speed in mid-rang
 const FAR_RANGE_SPEED_MULTIPLIER = 0.6;    // Slower when far to give players chance to prepare
 
 // Dynamic pathfinding scaling
-const MAX_PATHFINDERS_PER_TICK = 20;  // Maximum zombies that can pathfind per tick
+const MAX_PATHFINDERS_PER_TICK = 40;  // Maximum zombies that can pathfind per tick
 let currentTick = 0;                 // Current tick counter
 
 export interface EnemyEntityOptions extends EntityOptions {
