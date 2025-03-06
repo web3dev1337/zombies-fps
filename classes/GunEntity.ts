@@ -53,6 +53,9 @@ export default abstract class GunEntity extends Entity {
   private _reloading: boolean = false;
   private _shootAudio: Audio;
 
+  // Add damage variation constants
+  private static readonly DAMAGE_VARIATION_PERCENT = 0.1; // 10% variation
+
   public constructor(options: GunEntityOptions) {
     super({
       ...options,
@@ -233,6 +236,15 @@ export default abstract class GunEntity extends Entity {
     this._shootAudio.play(this.parent.world, true);
   }
 
+  /**
+   * Calculate actual damage with random variation
+   * @returns The damage value with ±20% random variation
+   */
+  protected calculateDamageWithVariation(): number {
+    const variation = 1 + (Math.random() * 2 - 1) * GunEntity.DAMAGE_VARIATION_PERCENT;
+    return this.damage * variation;
+  }
+
   public shootRaycast(origin: Vector3Like, direction: Vector3Like, length: number) {
     if (!this.parent || !this.parent.world) {
       return;
@@ -241,7 +253,7 @@ export default abstract class GunEntity extends Entity {
     const parentPlayerEntity = this.parent as GamePlayerEntity;
    
     const raycastHit = this.parent.world.simulation.raycast(origin, direction, length, {
-      filterGroups: CollisionGroupsBuilder.buildRawCollisionGroups({ // filter group is the group the raycast belongs to.
+      filterGroups: CollisionGroupsBuilder.buildRawCollisionGroups({
         belongsTo: [ CollisionGroup.ALL ],
         collidesWith: [ CollisionGroup.BLOCK, CollisionGroup.ENTITY ],
       }),
@@ -255,11 +267,14 @@ export default abstract class GunEntity extends Entity {
     const hitPoint = raycastHit.hitPoint;
 
     if (hitEntity && hitEntity instanceof EnemyEntity) {
+      // Calculate damage with random variation
+      const actualDamage = this.calculateDamageWithVariation();
+      
       // Check if it's a headshot based on hit position
       const isHeadshot = hitEntity.isHeadshot(hitPoint);
       
       // Apply damage with headshot information
-      hitEntity.takeDamage(this.damage, parentPlayerEntity, isHeadshot, hitPoint);
+      hitEntity.takeDamage(actualDamage, parentPlayerEntity, isHeadshot, hitPoint);
       
       // Create hit effect
       const hitDirection = {
