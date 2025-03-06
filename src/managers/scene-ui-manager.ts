@@ -140,7 +140,7 @@ export class SceneUIManager {
         z: worldPosition.z
       },
       state: {
-        amount: Math.round(damage), // Ensure damage is rounded
+        amount: Math.floor(damage), // Use floor instead of round for consistency
         isCritical: isHeadshot,
         style: dynamicStyle
       }
