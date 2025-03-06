@@ -145,7 +145,7 @@ export default class GameManager {
   }
 
   public startGame() {
-    if (!this.world || this.isStarted) return; // type guard
+    if (!this.world || this.isStarted) return;
 
     this.isStarted = true;
     clearInterval(this._startInterval);
@@ -154,8 +154,64 @@ export default class GameManager {
       player.ui.sendData({ type: 'start' });
     });
 
-    this._spawnLoop();
-    this._waveLoop();
+    // Spawn 200 zombies to test scaled pathfinding
+    this._spawnTestZombiesProgressive(200);
+
+    // Comment out normal spawn loops for testing
+    // this._spawnLoop();
+    // this._waveLoop();
+  }
+
+  private _spawnTestZombiesProgressive(totalCount: number) {
+    if (!this.world) return;
+
+    const BATCH_SIZE = 10;        // Smaller batches for smoother spawning
+    const BATCH_INTERVAL_MS = 100; // Faster spawning since we have better pathfinding
+    let spawnedCount = 0;
+
+    console.log(`Starting spawn of ${totalCount} zombies...`);
+    
+    const spawnBatch = () => {
+      if (!this.world) return;
+
+      const batchSize = Math.min(BATCH_SIZE, totalCount - spawnedCount);
+      
+      // Use multiple spawn points per batch
+      for (let i = 0; i < batchSize; i++) {
+        const spawnPoint = this._getSpawnPoint(); // Get different spawn point for each zombie
+        const offsetX = (Math.random() - 0.5) * 4;  // Small spread to prevent clumping
+        const offsetZ = (Math.random() - 0.5) * 4;
+        
+        const zombie = new ZombieEntity({
+          health: 7,
+          speed: 3 + Math.random() * 2,
+        });
+
+        zombie.spawn(this.world, {
+          x: spawnPoint.x + offsetX,
+          y: spawnPoint.y,
+          z: spawnPoint.z + offsetZ
+        });
+        spawnedCount++;
+      }
+
+      // Log progress every 50 zombies
+      if (spawnedCount % 50 === 0) {
+        console.log(`Spawned ${spawnedCount}/${totalCount} zombies`);
+        this.world?.chatManager.sendBroadcastMessage(`${spawnedCount} zombies spawned...`, 'FF0000');
+      }
+
+      // Schedule next batch if needed
+      if (spawnedCount < totalCount) {
+        setTimeout(() => spawnBatch(), BATCH_INTERVAL_MS);
+      } else {
+        console.log('All zombies spawned!');
+        this.world?.chatManager.sendBroadcastMessage('All 200 zombies spawned! Good luck!', 'FF0000');
+      }
+    };
+
+    // Start spawning
+    spawnBatch();
   }
 
   public endGame() {

@@ -23,6 +23,20 @@ import type { HitInfo } from '../src/managers/score-manager';
 const RETARGET_ACCUMULATOR_THRESHOLD_MS = 5000;
 const PATHFIND_ACCUMULATOR_THRESHOLD_MS = 3000;
 
+// Distance-based pathfinding optimization
+const CLOSE_RANGE = 3;     // Use direct movement when very close
+const MID_RANGE = 15;      // Use simplified pathfinding
+const FAR_RANGE = 40;      // Use basic movement for far away zombies
+
+// Speed multipliers for different ranges
+const CLOSE_RANGE_SPEED_MULTIPLIER = 1.2;  // Faster when very close for more aggressive behavior
+const MID_RANGE_SPEED_MULTIPLIER = 0.8;    // Slightly reduced speed in mid-range for better pathfinding
+const FAR_RANGE_SPEED_MULTIPLIER = 0.6;    // Slower when far to give players chance to prepare
+
+// Dynamic pathfinding scaling
+const MAX_PATHFINDERS_PER_TICK = 20;  // Maximum zombies that can pathfind per tick
+let currentTick = 0;                 // Current tick counter
+
 export interface EnemyEntityOptions extends EntityOptions {
   damage: number;
   damageAudioUri?: string;
@@ -295,9 +309,16 @@ export default class EnemyEntity extends Entity {
   private _onTick = (payload: EventPayloads[EntityEvent.TICK]) => {
     const { tickDeltaMs } = payload;
 
-    if (!this.isSpawned) {
+    if (!this.isSpawned || !this.world || !this.id) {
       return;
     }
+
+    // Get total zombie count and calculate cycle length
+    const totalZombies = this.world.entityManager.getEntitiesByTag('enemy').length;
+    const cycleLength = Math.max(20, Math.ceil(totalZombies / MAX_PATHFINDERS_PER_TICK));
+    
+    // Increment and wrap tick counter
+    currentTick = (currentTick + 1) % cycleLength;
 
     this._pathfindAccumulatorMs += tickDeltaMs;
     this._retargetAccumulatorMs += tickDeltaMs;
@@ -316,39 +337,57 @@ export default class EnemyEntity extends Entity {
     const targetDistance = this._getTargetDistance(this._targetEntity);
     const pathfindingController = this.controller as PathfindingEntityController;
 
-    // Always use pathfinding when target is far, or when close but there might be obstacles
-    if (targetDistance > 3) {
-      if (this._pathfindAccumulatorMs > PATHFIND_ACCUMULATOR_THRESHOLD_MS || !this._isPathfinding) {
-        this._isPathfinding = pathfindingController.pathfind(this._targetEntity?.position || this.position, this.speed, {
-          maxFall: this.jumpHeight * 1.5, // Increase max fall height slightly
-          maxJump: this.jumpHeight * 1.5, // Increase max jump height slightly
-          maxOpenSetIterations: 500, // Increase iterations for more complex paths
-          verticalPenalty: this.preferJumping ? -1 : 2, // Increase penalty for vertical movement
-          pathfindAbortCallback: () => {
-            this._isPathfinding = false;
-            // If pathfinding fails, try direct movement temporarily
-            if (this._targetEntity) {
-              pathfindingController.move(this._targetEntity.position, this.speed * 0.5);
-            }
-          },
-          pathfindCompleteCallback: () => this._isPathfinding = false,
-          waypointMoveSkippedCallback: () => {
-            this._isPathfinding = false;
-            // If waypoint is skipped, force a new pathfinding attempt sooner
-            this._pathfindAccumulatorMs = PATHFIND_ACCUMULATOR_THRESHOLD_MS;
-          },
-        });
-
-        this._pathfindAccumulatorMs = 0;
+    // Very close range - use aggressive direct movement
+    if (targetDistance <= CLOSE_RANGE) {
+      if (this._targetEntity?.position) {
+        // Faster movement speed when very close for more aggressive behavior
+        pathfindingController.move(this._targetEntity.position, this.speed * CLOSE_RANGE_SPEED_MULTIPLIER);
+        
+        // Quick turning when close for more responsive attacks
+        pathfindingController.face(this._targetEntity.position, this.speed * 2);
       }
-    } else if (this._targetEntity) {
-      // When very close, use direct movement but at reduced speed
-      pathfindingController.move(this._targetEntity.position, this.speed * 0.6);
+      return;
     }
 
-    // Always face the target
-    if (this._targetEntity) {
-      pathfindingController.face(this._targetEntity.position, this.speed * 2);
+    // Check if it's this zombie's turn to pathfind
+    const mySlot = this.id % cycleLength;
+    const canPathfindThisTick = mySlot === currentTick;
+
+    if (targetDistance <= MID_RANGE) {
+      // Mid range - use full pathfinding when it's our turn
+      if (canPathfindThisTick && (this._pathfindAccumulatorMs > PATHFIND_ACCUMULATOR_THRESHOLD_MS || !this._isPathfinding)) {
+        if (this._targetEntity?.position) {
+          this._isPathfinding = pathfindingController.pathfind(this._targetEntity.position, this.speed * MID_RANGE_SPEED_MULTIPLIER, {
+            maxFall: this.jumpHeight * 1.5,
+            maxJump: this.jumpHeight * 1.5,
+            maxOpenSetIterations: 300,
+            verticalPenalty: this.preferJumping ? -1 : 2,
+            pathfindAbortCallback: () => {
+              this._isPathfinding = false;
+              if (this._targetEntity?.position) {
+                // Use slower speed for direct movement if pathfinding fails
+                pathfindingController.move(this._targetEntity.position, this.speed * CLOSE_RANGE_SPEED_MULTIPLIER);
+              }
+            },
+            pathfindCompleteCallback: () => this._isPathfinding = false,
+          });
+          this._pathfindAccumulatorMs = 0;
+        }
+      } else if (this._targetEntity?.position && !this._isPathfinding) {
+        // Not our turn or pathfinding failed - use simple movement at mid-range speed
+        pathfindingController.move(this._targetEntity.position, this.speed * MID_RANGE_SPEED_MULTIPLIER);
+      }
+    } else {
+      // Far range - use simple movement at far range speed
+      if (this._targetEntity?.position) {
+        pathfindingController.move(this._targetEntity.position, this.speed * FAR_RANGE_SPEED_MULTIPLIER);
+      }
+    }
+
+    // Face target with reduced updates for far zombies
+    if (this._targetEntity?.position) {
+      const turnSpeed = targetDistance <= CLOSE_RANGE ? this.speed : this.speed * 2;
+      pathfindingController.face(this._targetEntity.position, turnSpeed);
     }
   }
 
