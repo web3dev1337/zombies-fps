@@ -384,10 +384,14 @@ export class ZombieDeathEffects {
             hitDirection.y * hitDirection.y + 
             hitDirection.z * hitDirection.z
         );
-        const normalizedDirection = {
+        const normalizedDirection = magnitude > 0 ? {
             x: hitDirection.x / magnitude,
             y: hitDirection.y / magnitude,
             z: hitDirection.z / magnitude
+        } : {
+            x: 0,
+            y: 1, // Default to upward direction if no direction provided
+            z: 0
         };
 
         // Spawn particles in a batch
