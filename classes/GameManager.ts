@@ -13,7 +13,7 @@ import type { Player } from 'hytopia';
 const GAME_WAVE_INTERVAL_MS = 30 * 1000; // 30 seconds between waves
 const SLOWEST_SPAWN_INTERVAL_MS = 2000; // Slower start - 2 seconds between zombies
 const FASTEST_SPAWN_INTERVAL_MS = 110; // ~200 zombies per 22 seconds
-const GAME_START_COUNTDOWN_S = 10; // 5 seconds delay before game starts
+const GAME_START_COUNTDOWN_S = 25; // 5 seconds delay before game starts
 const WAVE_SPAWN_INTERVAL_REDUCTION_MS = 200; // Slower early scaling
 const WAVE_DELAY_MS = 8000; // 8s between waves
 
