@@ -61,7 +61,7 @@ export default class WallWeaponEntity extends InteractableEntity {
 
     this._purchaseSceneUI = new SceneUI({
       attachedToEntity: this,
-      offset: { x: 0, y: 1.5, z: 0 },
+      offset: { x: 0, y: 0.65, z: 0 },
       templateId: 'purchase-label',
       viewDistance: 8,
       state: {
