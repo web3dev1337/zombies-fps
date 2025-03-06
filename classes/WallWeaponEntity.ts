@@ -5,6 +5,7 @@ import {
   World,
   SceneUI,
   Entity,
+  Quaternion,
 } from 'hytopia';
 import type {
   QuaternionLike,
@@ -34,6 +35,11 @@ export default class WallWeaponEntity extends InteractableEntity {
   private _displayOffset: Vector3Like;
   private _displayRotation?: QuaternionLike;
   private _weaponDisplay?: Entity;
+  private _floatAnimationStartTime: number;
+  private _floatHeight: number = 0.5; // Increased from 0.2 to 0.5 for more noticeable movement
+  private _floatSpeed: number = 0.8; // Slowed down from 1.5 to 0.8 to make it more visible
+  private _floatInterval?: NodeJS.Timer;
+  private _pulseInterval?: NodeJS.Timer;
 
   public constructor(options: WallWeaponEntityOptions) {
     const colliderOptions = Collider.optionsFromModelUri(options.modelUri);
@@ -57,18 +63,57 @@ export default class WallWeaponEntity extends InteractableEntity {
     this._modelUri = options.modelUri;
     this._displayOffset = options.displayOffset ?? { x: 0, y: 0, z: 0 };
     this._displayRotation = options.displayRotation;
+    this._floatAnimationStartTime = Date.now();
 
-    // Create purchase UI
+    // Create purchase UI with pulsing effect
     this._purchaseSceneUI = new SceneUI({
       attachedToEntity: this,
-      offset: { x: 0, y: 1, z: 0 },
+      offset: { x: 0, y: 2, z: 0 }, // Raised from 1.5 to 2 for better visibility
       templateId: 'purchase-label',
-      viewDistance: 4,
+      viewDistance: 8,
       state: {
-        name: `${this.name}`,
+        name: `💰 ${this.name} 💰`, // Added emojis for visibility
         cost: this.purchasePrice,
+        isPulsing: true,
       },
     });
+
+    // Start the UI pulse animation
+    this._startUIPulse();
+  }
+
+  private _startUIPulse() {
+    if (!this.world) return;
+
+    // Clear any existing interval
+    if (this._pulseInterval) {
+      clearInterval(this._pulseInterval);
+    }
+
+    console.log(`Starting pulse animation for ${this.name}`);
+
+    // Update every 50ms (20 times per second)
+    this._pulseInterval = setInterval(() => {
+      if (!this.isSpawned) {
+        if (this._pulseInterval) {
+          clearInterval(this._pulseInterval);
+          console.log(`Stopping pulse animation for ${this.name} - entity despawned`);
+        }
+        return;
+      }
+
+      const time = (Date.now() - this._floatAnimationStartTime) / 1000;
+      const scale = 1 + Math.sin(time * Math.PI) * 0.25; // Increased from 0.1 to 0.25 for more noticeable pulsing
+
+      if (this._purchaseSceneUI) {
+        this._purchaseSceneUI.setState({
+          name: `💰 ${this.name} 💰`,
+          cost: this.purchasePrice,
+          isPulsing: true,
+          opacity: scale, // Using opacity instead of scale since it's more likely to be supported
+        });
+      }
+    }, 50);
   }
 
   public override interact(interactingPlayer: GamePlayerEntity) {
@@ -115,9 +160,63 @@ export default class WallWeaponEntity extends InteractableEntity {
       z: position.z + this._displayOffset.z
     };
     this._weaponDisplay.spawn(world, displayPosition, this._displayRotation ?? rotation);
+
+    // Start the floating animation update
+    this._startFloatingAnimation();
+  }
+
+  private _startFloatingAnimation() {
+    if (!this._weaponDisplay || !this.world) return;
+
+    // Clear any existing interval
+    if (this._floatInterval) {
+      clearInterval(this._floatInterval);
+    }
+
+    console.log(`Starting float animation for ${this.name}`);
+
+    // Update every 16ms (approximately 60 times per second)
+    this._floatInterval = setInterval(() => {
+      if (!this._weaponDisplay || !this.isSpawned) {
+        if (this._floatInterval) {
+          clearInterval(this._floatInterval);
+          console.log(`Stopping float animation for ${this.name} - entity despawned`);
+        }
+        return;
+      }
+
+      const time = (Date.now() - this._floatAnimationStartTime) / 1000;
+      const floatOffset = Math.sin(time * Math.PI * 2 * this._floatSpeed) * this._floatHeight;
+      const rotationOffset = Math.sin(time * Math.PI * this._floatSpeed) * 15; // Added slight rotation
+
+      const basePosition = {
+        x: this.position.x + this._displayOffset.x,
+        y: this.position.y + this._displayOffset.y,
+        z: this.position.z + this._displayOffset.z
+      };
+
+      this._weaponDisplay.setPosition({
+        x: basePosition.x,
+        y: basePosition.y + floatOffset,
+        z: basePosition.z
+      });
+
+      // Add a gentle rotation to make it more noticeable
+      this._weaponDisplay.setRotation(Quaternion.fromEuler(0, rotationOffset, 0));
+    }, 16);
   }
 
   public override despawn(): void {
+    // Clear animation intervals
+    if (this._floatInterval) {
+      clearInterval(this._floatInterval);
+      this._floatInterval = undefined;
+    }
+    if (this._pulseInterval) {
+      clearInterval(this._pulseInterval);
+      this._pulseInterval = undefined;
+    }
+
     if (this._weaponDisplay) {
       this._weaponDisplay.despawn();
       this._weaponDisplay = undefined;
