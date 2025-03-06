@@ -110,8 +110,9 @@ export default class EnemyEntity extends Entity {
       this._damageAudio = new Audio({
         attachedToEntity: this,
         uri: options.damageAudioUri,
-        volume: 1,
+        volume: 0.4,
         loop: false,
+        referenceDistance: 5  // Increased from default to hear zombie damage sounds better
       });
     }
 
@@ -119,9 +120,9 @@ export default class EnemyEntity extends Entity {
       this._idleAudio = new Audio({
         attachedToEntity: this,
         uri: options.idleAudioUri,
-        volume: options.idleAudioVolume ?? 0.5,
+        volume: options.idleAudioVolume ?? 0.2,  // Increased default volume
         loop: true,
-        referenceDistance: options.idleAudioReferenceDistance ?? 1, // low reference distance so its only heard when the enemy is very near
+        referenceDistance: options.idleAudioReferenceDistance ?? 5 // Increased from 1 to hear zombies from further away
       });
     }
 

@@ -76,25 +76,28 @@ export default abstract class GunEntity extends Entity {
     this.reloadTimeMs = options.reloadTimeMs;
     this.shootAnimation = options.shootAnimation;
 
-    // Create reusable audio instances
+    // Create reusable audio instances with better spatial settings
     this._reloadAudio = new Audio({
       attachedToEntity: this,
-      uri: options.reloadAudioUri,  
+      uri: options.reloadAudioUri,
+      volume: 0.8,
+      referenceDistance: 15  // Increased for better audibility
     });
 
     this._shootAudio = new Audio({
       attachedToEntity: this,
       uri: options.shootAudioUri,
-      volume: 0.2,
-      referenceDistance: 8,
+      volume: 0.4,           // Increased base volume
+      referenceDistance: 25  // Increased for better long-range audibility
     });
 
-    // Initialize hit marker audio
+    // Initialize hit marker audio with spatial settings
     this._hitMarkerAudio = new Audio({
       attachedToEntity: this,
       uri: 'audio/sfx/damage/hit-marker.wav',
       volume: 1.0,
       loop: false,
+      referenceDistance: 30  // Increased for better feedback
     });
 
     if (options.parent) {
@@ -333,8 +336,9 @@ export default abstract class GunEntity extends Entity {
           // Play headshot sound - make it priority since it's important feedback
           const headshotSound = new Audio({
             uri: 'audio/sfx/headshot.mp3',
-            volume: 0.5,
+            volume: 0.7,
             loop: false,
+            referenceDistance: 35  // Increased for better audibility
           });
           GameAudioManager.playPrioritySound(headshotSound, this.parent.world);
           
