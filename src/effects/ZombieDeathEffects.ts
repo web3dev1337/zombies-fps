@@ -2,8 +2,10 @@ import { Entity, RigidBodyType, ColliderShape, World } from 'hytopia';
 import type { Vector3Like } from 'hytopia';
 
 // Death effect configuration
-const PARTICLE_COUNT = 12;
+const PARTICLE_COUNT = 15;
 const PARTICLE_SCALE = 0.4;
+const PARTICLE_SCALE_MIN = 0.15;    // Smallest gore particles
+const PARTICLE_SCALE_MAX = 0.5;    // Largest gore particles
 const PARTICLE_LIFETIME_MS = 2000;
 const PARTICLE_MODEL_URI = 'models/items/rotting-flesh.gltf';
 
@@ -277,7 +279,9 @@ export class ZombieDeathEffects {
         // Spawn particles in a batch to ensure consistent timing
         const particles: Entity[] = [];
         for (let i = 0; i < particlesToSpawn; i++) {
-            const particle = this.getParticleFromPool();
+            // Random scale for death particles
+            const randomScale = PARTICLE_SCALE_MIN + Math.random() * (PARTICLE_SCALE_MAX - PARTICLE_SCALE_MIN);
+            const particle = this.getParticleFromPool(randomScale);
             if (!particle) {
                 console.warn(`Failed to get particle ${i}`);
                 continue;
