@@ -29,6 +29,7 @@ import InteractableEntity from './InteractableEntity';
 import type GunEntity from './GunEntity';
 import { INVISIBLE_WALL_COLLISION_GROUP } from '../gameConfig';
 import GameManager from './GameManager';
+import GameAudioManager from './GameAudioManager';
 
 const BASE_HEALTH = 100;
 const REVIVE_REQUIRED_HEALTH = 50;
@@ -58,6 +59,9 @@ export default class GamePlayerEntity extends PlayerEntity {
   private _reviveDistanceVectorB: Vector3;
   private _lastDamageTime: number = 0;
   private readonly REGEN_DELAY_MS: number = 5000; // 5 seconds in milliseconds
+  private _lastDamageAudioTime: number = 0;
+  private readonly DAMAGE_AUDIO_THROTTLE_MS: number = 100; // Minimum time between damage sounds
+  private readonly DAMAGE_AUDIO_MAX_DISTANCE: number = 30; // Maximum distance to play damage audio
 
   // Player entities always assign a PlayerController to the entity, so we can safely create a convenience getter
   public get playerController(): PlayerEntityController {
@@ -95,12 +99,13 @@ export default class GamePlayerEntity extends PlayerEntity {
     // Set base stats
     this.health = BASE_HEALTH;
 
-    // Setup damage audio
+    // Setup damage audio with reference distance for better spatial audio
     this._damageAudio = new Audio({
       attachedToEntity: this,
       uri: 'audio/sfx/player-hurt.mp3',
       loop: false,
       volume: 0.7,
+      referenceDistance: 20, // Audio will start fading at this distance
     });
 
     // Setup purchase audio
@@ -137,6 +142,9 @@ export default class GamePlayerEntity extends PlayerEntity {
 
   public override spawn(world: World, position: Vector3Like, rotation?: QuaternionLike): void {
     super.spawn(world, position, rotation);
+
+    // Initialize audio manager if not already done
+    GameAudioManager.init();
 
     // Prevent players from colliding, setup appropriate collision groups for invisible walls, etc.
     this.setCollisionGroupsForSolidColliders({
@@ -192,7 +200,8 @@ export default class GamePlayerEntity extends PlayerEntity {
 
     this.money -= roundedAmount;
     this._updatePlayerUIMoney();
-    this._purchaseAudio.play(this.world, true);
+    // Always play purchase sound as it's important feedback
+    GameAudioManager.playPrioritySound(this._purchaseAudio, this.world);
     return true;
   }
 
@@ -213,9 +222,28 @@ export default class GamePlayerEntity extends PlayerEntity {
     
     this._updatePlayerUIHealth();
 
-    // randomize the detune for variation each hit
-    this._damageAudio.setDetune(-200 + Math.random() * 800);
-    this._damageAudio.play(this.world, true);
+    // Audio throttling and distance culling
+    const now = Date.now();
+    if (now - this._lastDamageAudioTime >= this.DAMAGE_AUDIO_THROTTLE_MS) {
+      // Only play audio for nearby players to reduce audio load
+      const nearbyPlayers = this.world.entityManager.getAllPlayerEntities()
+        .filter(player => {
+          if (!(player instanceof GamePlayerEntity)) return false;
+          const dx = player.position.x - this.position.x;
+          const dy = player.position.y - this.position.y;
+          const dz = player.position.z - this.position.z;
+          const distanceSquared = dx * dx + dy * dy + dz * dz;
+          return distanceSquared <= (this.DAMAGE_AUDIO_MAX_DISTANCE * this.DAMAGE_AUDIO_MAX_DISTANCE);
+        });
+
+      if (nearbyPlayers.length > 0) {
+        // randomize the detune for variation each hit
+        this._damageAudio.setDetune(-200 + Math.random() * 800);
+        // Use regular playSound as damage sounds can be queued if too many
+        GameAudioManager.playSound(this._damageAudio, this.world);
+        this._lastDamageAudioTime = now;
+      }
+    }
   }
 
   public progressRevive(byPlayer: GamePlayerEntity) {

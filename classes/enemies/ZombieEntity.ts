@@ -13,6 +13,8 @@ export default class ZombieEntity extends EnemyEntity {
       damageAudioUri: options.damageAudioUri ?? 'audio/sfx/entity/zombie/zombie-hurt.mp3',
       health: options.health ?? 7,
       idleAudioUri: options.idleAudioUri ?? 'audio/sfx/zombie-idle.mp3',
+      idleAudioVolume: options.idleAudioVolume ?? 0.8,
+      idleAudioReferenceDistance: options.idleAudioReferenceDistance ?? 20,
       jumpHeight: options.jumpHeight ?? 2,
       reward: options.reward ?? 10,
       speed: options.speed ?? speed,
