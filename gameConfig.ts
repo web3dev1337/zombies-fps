@@ -217,7 +217,7 @@ export const WALL_WEAPONS = [
     price: 400,
     weaponClass: AutoShotgunEntity,
     modelUri: 'models/items/auto-shotgun.glb',
-    displayOffset: { x: 0, y: 1.5, z: 0.3 },
+    displayOffset: { x: 0, y: 0.5, z: 0.3 },
     displayRotation: Quaternion.fromEuler(0, 0, 90),
   },
   {
