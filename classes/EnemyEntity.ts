@@ -202,13 +202,13 @@ export default class EnemyEntity extends Entity {
       this._damageAudio.play(this.world, true);
     }
 
-    // Give reward based on damage as % of health
+    // Give reward based on damage as % of health with 20% increase
     if (fromPlayer) {
       // Calculate reward multiplier based on hit type
       let rewardMultiplier = 1;
       if (isHeadshot) rewardMultiplier *= 2;
       
-      const moneyReward = (actualDamage / this.maxHealth) * this.reward * rewardMultiplier * 1.0;
+      const moneyReward = (actualDamage / this.maxHealth) * this.reward * rewardMultiplier * 1.2; // 20% increase
       fromPlayer.addMoney(moneyReward);
       
       // Track kill if enemy dies
