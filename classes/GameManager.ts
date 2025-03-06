@@ -279,15 +279,9 @@ export default class GameManager {
 
     clearTimeout(this._enemySpawnTimeout);
 
-    const zombie = new ZombieEntity({
-      health: 7 + (this.waveNumber * 0.25),
-      speed: Math.min(8, 3 + this.waveNumber * 0.4), // TEMPORARY: Faster speed increase per wave (Original: Math.min(6, 2 + this.waveNumber * 0.25))
-    });
-
-    zombie.spawn(this.world, this._getSpawnPoint());
-
-    const nextSpawn = Math.max(FASTEST_SPAWN_INTERVAL_MS, SLOWEST_SPAWN_INTERVAL_MS - (this.waveNumber * WAVE_SPAWN_INTERVAL_REDUCTION_MS)) + this.waveDelay;
-
+    // Set spawn interval to effectively infinite to prevent spawns
+    const nextSpawn = Number.MAX_SAFE_INTEGER;
+    
     this._enemySpawnTimeout = setTimeout(() => this._spawnLoop(), nextSpawn);
     this.waveDelay = 0;
 

@@ -5,7 +5,7 @@
       "name": "zombie-hytopia",
       "dependencies": {
         "@hytopia.com/assets": "latest",
-        "hytopia": "latest",
+        "hytopia": "^0.3.5",
       },
     },
   },
