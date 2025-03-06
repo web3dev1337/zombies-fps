@@ -316,21 +316,39 @@ export default class EnemyEntity extends Entity {
     const targetDistance = this._getTargetDistance(this._targetEntity);
     const pathfindingController = this.controller as PathfindingEntityController;
 
-    if (targetDistance < 8 || (!this._isPathfinding && this._pathfindAccumulatorMs < PATHFIND_ACCUMULATOR_THRESHOLD_MS)) {
-      pathfindingController.move(this._targetEntity.position, this.speed);
-      pathfindingController.face(this._targetEntity.position, this.speed * 2);
-    } else if (this._pathfindAccumulatorMs > PATHFIND_ACCUMULATOR_THRESHOLD_MS) {
-      this._isPathfinding = pathfindingController.pathfind(this._targetEntity.position, this.speed, {
-        maxFall: this.jumpHeight,
-        maxJump: this.jumpHeight,
-        maxOpenSetIterations: 200,
-        verticalPenalty: this.preferJumping ? -1 : 1,
-        pathfindAbortCallback: () => this._isPathfinding = false,
-        pathfindCompleteCallback: () => this._isPathfinding = false,
-        waypointMoveSkippedCallback: () => this._isPathfinding = false,
-      });
+    // Always use pathfinding when target is far, or when close but there might be obstacles
+    if (targetDistance > 3) {
+      if (this._pathfindAccumulatorMs > PATHFIND_ACCUMULATOR_THRESHOLD_MS || !this._isPathfinding) {
+        this._isPathfinding = pathfindingController.pathfind(this._targetEntity?.position || this.position, this.speed, {
+          maxFall: this.jumpHeight * 1.5, // Increase max fall height slightly
+          maxJump: this.jumpHeight * 1.5, // Increase max jump height slightly
+          maxOpenSetIterations: 500, // Increase iterations for more complex paths
+          verticalPenalty: this.preferJumping ? -1 : 2, // Increase penalty for vertical movement
+          pathfindAbortCallback: () => {
+            this._isPathfinding = false;
+            // If pathfinding fails, try direct movement temporarily
+            if (this._targetEntity) {
+              pathfindingController.move(this._targetEntity.position, this.speed * 0.5);
+            }
+          },
+          pathfindCompleteCallback: () => this._isPathfinding = false,
+          waypointMoveSkippedCallback: () => {
+            this._isPathfinding = false;
+            // If waypoint is skipped, force a new pathfinding attempt sooner
+            this._pathfindAccumulatorMs = PATHFIND_ACCUMULATOR_THRESHOLD_MS;
+          },
+        });
 
-      this._pathfindAccumulatorMs = 0;
+        this._pathfindAccumulatorMs = 0;
+      }
+    } else if (this._targetEntity) {
+      // When very close, use direct movement but at reduced speed
+      pathfindingController.move(this._targetEntity.position, this.speed * 0.6);
+    }
+
+    // Always face the target
+    if (this._targetEntity) {
+      pathfindingController.face(this._targetEntity.position, this.speed * 2);
     }
   }
 
