@@ -142,6 +142,7 @@ export default class GameManager {
       if (this._startCountdown <= 0) {
         this.startGame();
         this.world.chatManager.sendBroadcastMessage('Game starting!', 'FF0000');
+        this.world.chatManager.sendBroadcastMessage('Press TAB to view the scoreboard', '00FF00');
       } else {
         this.world.chatManager.sendBroadcastMessage(`${this._startCountdown} seconds until the game starts...`, 'FF0000');
       }
