@@ -298,6 +298,13 @@ export class ZombieDeathEffects {
                 z: position.z + offsetZ
             });
 
+            // For death effects, randomly apply red tint to 50% of particles after spawning
+            if (Math.random() < 0.5) {
+                // Random red intensity between 10% and 100%
+                const redIntensity = Math.floor(25.5 + Math.random() * 229.5); // 10% = 25.5, 100% = 255
+                particle.setTintColor({ r: 255, g: 255 - redIntensity, b: 255 - redIntensity });
+            }
+
             this.activeParticles.add(particle);
             successfulSpawns++;
 
