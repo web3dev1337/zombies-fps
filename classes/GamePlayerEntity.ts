@@ -2,25 +2,28 @@ import {
   Audio,
   BaseEntityControllerEvent,
   CollisionGroup,
-  EventPayloads,
   Light,
   LightType,
   Player,
-  PlayerCameraOrientation,
   PlayerEntity,
   PlayerCameraMode,
-  PlayerInput,
   SceneUI,
-  Vector3Like,
-  QuaternionLike,
   World,
   Quaternion,
   PlayerEntityController,
   Vector3,
+  GameServer,
+} from 'hytopia';
+
+import type {
+  EventPayloads,
+  PlayerCameraOrientation,
+  PlayerInput,
+  Vector3Like,
+  QuaternionLike,
 } from 'hytopia';
 
 import PistolEntity from './guns/PistolEntity';
-
 import InteractableEntity from './InteractableEntity';
 import type GunEntity from './GunEntity';
 import { INVISIBLE_WALL_COLLISION_GROUP } from '../gameConfig';
@@ -33,15 +36,23 @@ const REVIVE_DISTANCE_THRESHOLD = 3;
 
 export default class GamePlayerEntity extends PlayerEntity {
   public health: number;
-  public maxHealth: number;
-  public money: number;
-  public downed = false;
+  public maxHealth: number = BASE_HEALTH;
+  public money: number = 0;
+  public downed: boolean = false;
+
+  // Add stat tracking
+  public kills: number = 0;
+  public headshots: number = 0;
+  public revives: number = 0;
+  public downs: number = 0;
+  public score: number = 0; // Track total earnings as score
+
   private _damageAudio: Audio;
   private _downedSceneUI: SceneUI;
   private _purchaseAudio: Audio;
   private _gun: GunEntity | undefined;
   private _light: Light;
-  private _reviveInterval: NodeJS.Timeout | undefined;
+  private _reviveInterval: NodeJS.Timer | undefined;
   private _reviveDistanceVectorA: Vector3;
   private _reviveDistanceVectorB: Vector3;
 
@@ -80,8 +91,6 @@ export default class GamePlayerEntity extends PlayerEntity {
   
     // Set base stats
     this.health = BASE_HEALTH;
-    this.maxHealth = BASE_HEALTH;
-    this.money = 0;
 
     // Setup damage audio
     this._damageAudio = new Audio({
@@ -147,7 +156,9 @@ export default class GamePlayerEntity extends PlayerEntity {
   }
 
   public addMoney(amount: number) {
-    this.money += amount;
+    const roundedAmount = Math.round(amount);
+    this.money += roundedAmount;
+    this.score += roundedAmount; // Add to total score when earning money
     this._updatePlayerUIMoney();
   }
 
@@ -171,11 +182,12 @@ export default class GamePlayerEntity extends PlayerEntity {
   }
 
   public spendMoney(amount: number): boolean {
-    if (!this.world || this.money < amount) {
+    const roundedAmount = Math.round(amount);
+    if (!this.world || this.money < roundedAmount) {
       return false;
     }
 
-    this.money -= amount;
+    this.money -= roundedAmount;
     this._updatePlayerUIMoney();
     this._purchaseAudio.play(this.world, true);
     return true;
@@ -355,5 +367,44 @@ export default class GamePlayerEntity extends PlayerEntity {
       this._autoHealTicker();
     }, 1000);
   }
-}
 
+  public addKill(isHeadshot: boolean) {
+    this.kills++;
+    if (isHeadshot) {
+      this.headshots++;
+    }
+    this.updateScoreboard();
+  }
+
+  public addRevive() {
+    this.revives++;
+    this.updateScoreboard();
+  }
+
+  private updateScoreboard() {
+    if (!this.world) return;
+
+    // Get all players and their stats
+    const players = this.world.entityManager.getAllPlayerEntities().map(entity => {
+      const player = entity as GamePlayerEntity;
+      return {
+        name: player.player.username,
+        kills: player.kills,
+        headshots: player.headshots,
+        money: Math.round(player.money),
+        score: Math.round(player.score),
+        revives: player.revives,
+        downs: player.downs
+      };
+    });
+
+    // Send scoreboard update to all players
+    GameServer.instance.playerManager.getConnectedPlayersByWorld(this.world).forEach((player: Player) => {
+      player.ui.sendData({
+        type: 'scoreboard',
+        players,
+        wave: GameManager.instance.waveNumber
+      });
+    });
+  }
+}

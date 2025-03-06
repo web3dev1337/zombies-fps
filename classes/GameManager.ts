@@ -11,11 +11,11 @@ import type EnemyEntity from './EnemyEntity';
 import type { Player } from 'hytopia';
 
 const GAME_WAVE_INTERVAL_MS = 30 * 1000; // 30 seconds between waves
-const SLOWEST_SPAWN_INTERVAL_MS = 2000; // TEMPORARY: Faster initial spawn rate (Original: 4000)
-const FASTEST_SPAWN_INTERVAL_MS = 500; // TEMPORARY: Faster minimum spawn rate (Original: 750)
-const GAME_START_COUNTDOWN_S = 5; // 5 seconds delay before game starts
-const WAVE_SPAWN_INTERVAL_REDUCTION_MS = 400; // TEMPORARY: Faster spawn rate reduction per wave (Original: 300)
-const WAVE_DELAY_MS = 10000; // 10s between waves
+const SLOWEST_SPAWN_INTERVAL_MS = 1500; // Start faster - 1.5 seconds between zombies
+const FASTEST_SPAWN_INTERVAL_MS = 110; // ~200 zombies per 22 seconds
+const GAME_START_COUNTDOWN_S = 10; // 5 seconds delay before game starts
+const WAVE_SPAWN_INTERVAL_REDUCTION_MS = 250; // Much faster early scaling
+const WAVE_DELAY_MS = 8000; // 8s between waves
 
 export default class GameManager {
   public static readonly instance = new GameManager();
@@ -279,9 +279,25 @@ export default class GameManager {
 
     clearTimeout(this._enemySpawnTimeout);
 
-    // Set spawn interval to effectively infinite to prevent spawns
-    const nextSpawn = Number.MAX_SAFE_INTEGER;
+    const zombie = new ZombieEntity({
+      health: Math.floor(15 * Math.pow(1.15, this.waveNumber - 1)),
+      speed: Math.min(8, 3 + Math.min(15, this.waveNumber) * 0.25),
+    });
+
+    zombie.spawn(this.world, this._getSpawnPoint());
+
+    // Modified spawn interval calculation for faster early scaling
+    let spawnInterval;
+    if (this.waveNumber <= 5) {
+      // Waves 1-5: Much faster scaling
+      spawnInterval = SLOWEST_SPAWN_INTERVAL_MS - (this.waveNumber * WAVE_SPAWN_INTERVAL_REDUCTION_MS);
+    } else {
+      // After wave 5: Continue aggressive scaling
+      spawnInterval = Math.max(FASTEST_SPAWN_INTERVAL_MS, 500 - ((this.waveNumber - 5) * 100));
+    }
     
+    const nextSpawn = Math.max(FASTEST_SPAWN_INTERVAL_MS, spawnInterval) + this.waveDelay;
+
     this._enemySpawnTimeout = setTimeout(() => this._spawnLoop(), nextSpawn);
     this.waveDelay = 0;
 
@@ -308,9 +324,10 @@ export default class GameManager {
     
     if (this.waveNumber % 5 === 0) { // Spawn a ripper every 5 waves
       const ripper = new RipperEntity({
-        health: 50 * this.waveNumber,
+        // Start at 1000, keep exponential scaling
+        health: Math.floor(1000 * Math.pow(1.5, Math.floor(this.waveNumber / 5) - 1)),
         speed: 2 + this.waveNumber * 0.25,
-        reward: 50 * this.waveNumber,
+        reward: 1000 * this.waveNumber, // Increased reward for 3 players
       });
       ripper.spawn(this.world, this._getSpawnPoint());
     }
