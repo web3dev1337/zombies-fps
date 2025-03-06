@@ -33,7 +33,8 @@ import GameAudioManager from './GameAudioManager';
 
 const BASE_HEALTH = 100;
 const REVIVE_REQUIRED_HEALTH = 50;
-const REVIVE_PROGRESS_INTERVAL_MS = 1000;
+const REVIVE_PROGRESS_INTERVAL_MS = 100;
+const REVIVE_HEALTH_PER_TICK = 1;
 const REVIVE_DISTANCE_THRESHOLD = 3;
 
 export default class GamePlayerEntity extends PlayerEntity {
@@ -262,7 +263,7 @@ export default class GamePlayerEntity extends PlayerEntity {
         return;
       }
 
-      this.health += 10;
+      this.health += REVIVE_HEALTH_PER_TICK;
       this._updatePlayerUIHealth();
 
       this._downedSceneUI.setState({
