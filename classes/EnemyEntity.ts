@@ -47,6 +47,7 @@ export interface EnemyEntityOptions extends EntityOptions {
   damageAudioUri?: string;
   health: number;
   headshotMultiplier?: number;     // Damage multiplier for headshots
+  hitMarkerAudioUri?: string;      // Audio URI for hit marker sound
   idleAudioUri?: string;
   idleAudioReferenceDistance?: number;
   idleAudioVolume?: number;
@@ -67,6 +68,7 @@ export default class EnemyEntity extends Entity {
   public speed: number;
 
   private _damageAudio: Audio | undefined;
+  private _hitMarkerAudio: Audio | undefined;  // Hit marker sound effect
   private _idleAudio: Audio | undefined;
   private _isPathfinding = false;
   private _pathfindAccumulatorMs = 0;
@@ -96,6 +98,15 @@ export default class EnemyEntity extends Entity {
         uri: options.damageAudioUri,
         volume: 1,
         loop: false,
+      });
+    }
+
+    if (options.hitMarkerAudioUri) {
+      this._hitMarkerAudio = new Audio({
+        attachedToEntity: this,
+        uri: options.hitMarkerAudioUri,
+        volume: 0.5,  // Moderate volume for hit marker
+        loop: false
       });
     }
 
@@ -197,6 +208,11 @@ export default class EnemyEntity extends Entity {
     }
     
     this.health -= actualDamage;
+
+    // Play hit marker sound for the player who hit the enemy
+    if (fromPlayer && this._hitMarkerAudio) {
+      this._hitMarkerAudio.play(this.world, true);
+    }
 
     if (this._damageAudio) {
       this._damageAudio.play(this.world, true);
