@@ -407,4 +407,11 @@ export default abstract class GunEntity extends Entity {
   private static _getParentNodeName(hand: GunHand): string {
     return hand === 'left' ? 'hand_left_anchor' : 'hand_right_anchor';
   }
+
+  public updateRotationWithCamera(rotation: QuaternionLike) {
+    if (!this.isSpawned) return;
+    
+    // Apply the camera-based rotation to the gun
+    this.setRotation(rotation);
+  }
 }

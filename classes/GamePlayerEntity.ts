@@ -255,6 +255,23 @@ export default class GamePlayerEntity extends PlayerEntity {
     }
     
     try {
+      // Create base rotation that orients the gun model correctly
+      // The -90 degree X rotation is what we had in the original equipGun method
+      const baseRotation = Quaternion.fromEuler(-90, 0, 0);
+      
+      // Create camera-based rotation
+      const cameraRotation = Quaternion.fromEuler(
+        this.player.camera.orientation.pitch,
+        this.player.camera.orientation.yaw,
+        0
+      );
+      
+      // Combine the rotations (multiply quaternions)
+      // Order matters! Camera rotation should be applied after base rotation
+      const finalRotation = cameraRotation.multiply(baseRotation);
+      
+      this._gun.updateRotationWithCamera(finalRotation);
+
       if (input.ml && !this.downed) {
         this._gun.shoot();
       }
