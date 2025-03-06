@@ -53,6 +53,9 @@ export default class EnemyEntity extends Entity {
   private _pathfindAccumulatorMs = 0;
   private _retargetAccumulatorMs = 0;
   private _targetEntity: Entity | undefined;
+  private _batchedDamage: { damage: number; isHeadshot: boolean; fromPlayer?: GamePlayerEntity } | undefined;
+  private _batchTimeout: any;
+  private static readonly BATCH_WINDOW_MS = 50; // Time window to batch damage
 
   public constructor(options: EnemyEntityOptions) {
     super({ ...options, tag: 'enemy' });
@@ -156,13 +159,8 @@ export default class EnemyEntity extends Entity {
     if (!this.world) {
       return;
     }
-    
-    // Check for headshot if not explicitly provided but hit point is available
-    if (isHeadshot === undefined && hitPoint) {
-      isHeadshot = this.isHeadshot(hitPoint);
-    }
-    
-    // Calculate damage with multipliers
+
+    // Calculate actual damage with multipliers
     let actualDamage = damage;
     let damageType = '';
     
@@ -177,60 +175,69 @@ export default class EnemyEntity extends Entity {
       this._damageAudio.play(this.world, true);
     }
 
-    // Give reward based on damage as % of health
-    if (fromPlayer) {
-      // Calculate reward multiplier based on hit type
-      let rewardMultiplier = 1;
-      if (isHeadshot) rewardMultiplier *= 2;
-      
-      const moneyReward = (actualDamage / this.maxHealth) * this.reward * rewardMultiplier;
-      fromPlayer.addMoney(moneyReward);
-      
-      // Send appropriate UI notification
-      if (fromPlayer && hitPoint) {
-        // Create hit info for score calculation and display
-        const hitInfo: HitInfo = {
-          playerId: fromPlayer.player.id,
-          damage: actualDamage,
-          distance: this.getDistanceFrom(fromPlayer),
+    // Batch damage numbers
+    if (this._batchedDamage) {
+      // Add to existing batch
+      this._batchedDamage.damage += actualDamage;
+      // If any hit in the batch is a headshot, treat the whole batch as a headshot
+      this._batchedDamage.isHeadshot = this._batchedDamage.isHeadshot || !!isHeadshot;
+    } else {
+      // Start new batch
+      this._batchedDamage = {
+        damage: actualDamage,
+        isHeadshot: !!isHeadshot,
+        fromPlayer
+      };
+    }
+
+    // Clear existing timeout if any
+    if (this._batchTimeout) {
+      clearTimeout(this._batchTimeout);
+    }
+
+    // Set timeout to display batched damage
+    this._batchTimeout = setTimeout(() => {
+      if (this._batchedDamage && this._batchedDamage.fromPlayer && this.world) {
+        const batchedHitInfo: HitInfo = {
+          playerId: this._batchedDamage.fromPlayer.player.id,
+          damage: this._batchedDamage.damage,
+          distance: this.getDistanceFrom(this._batchedDamage.fromPlayer),
           targetSpeed: this.getSpeed(),
-          isHeadshot: !!isHeadshot,
+          isHeadshot: this._batchedDamage.isHeadshot,
           isKill: this.health <= 0,
-          hitPosition: hitPoint,
+          hitPosition: hitPoint || this.position,
           spawnOrigin: this.position
         };
-        
-        // Process hit using SceneUIManager
+
+        // Process batched hit using SceneUIManager
         const sceneUIManager = SceneUIManager.getInstance(this.world);
-        sceneUIManager.processHit(hitInfo);
+        sceneUIManager.processHit(batchedHitInfo);
+
+        // Calculate and give reward for batched damage
+        const rewardMultiplier = this._batchedDamage.isHeadshot ? 2 : 1;
+        const moneyReward = (this._batchedDamage.damage / this.maxHealth) * this.reward * rewardMultiplier;
+        this._batchedDamage.fromPlayer.addMoney(moneyReward);
 
         // Send legacy data for UI compatibility
-        fromPlayer.player.ui.sendData({ 
-          type: damageType || 'hit',
-          damage: actualDamage,
+        this._batchedDamage.fromPlayer.player.ui.sendData({
+          type: this._batchedDamage.isHeadshot ? 'headshot' : 'hit',
+          damage: this._batchedDamage.damage,
           reward: moneyReward
         });
-        
-        // Display hit text in the world
-        if (this.world) {
-          let message = '';
-          let color = '';
-          
-          if (damageType === 'headshot') {
-            message = `HEADSHOT! +$${Math.floor(moneyReward)}`;
-            color = 'FF0000';
-          }
-          
-          if (message) {
-            this.world.chatManager.sendPlayerMessage(
-              fromPlayer.player, 
-              message, 
-              color
-            );
-          }
+
+        // Display hit text in the world for headshots
+        if (this._batchedDamage.isHeadshot) {
+          this.world.chatManager.sendPlayerMessage(
+            this._batchedDamage.fromPlayer.player,
+            `HEADSHOT! +$${Math.floor(moneyReward)}`,
+            'FF0000'
+          );
         }
       }
-    }
+
+      // Clear the batch
+      this._batchedDamage = undefined;
+    }, EnemyEntity.BATCH_WINDOW_MS);
 
     // Apply visual feedback based on hit type
     if (this.isSpawned) {

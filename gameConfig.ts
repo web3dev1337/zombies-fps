@@ -217,7 +217,7 @@ export const WALL_WEAPONS = [
   },
   {
     name: 'Wall Shotgun',
-    position: { x: -12, y: 1.5, z: 8 },
+    position: { x: -4, y: 2.5, z: 20 },
     rotation: Quaternion.fromEuler(0, 0, 0),
     price: 1000,
     weaponClass: ShotgunEntity,
