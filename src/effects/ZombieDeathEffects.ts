@@ -166,19 +166,59 @@ export class ZombieDeathEffects {
     private returnParticleToPool(particle: Entity): void {
         if (!particle) return;
 
+        // Try to despawn if spawned
         if (particle.isSpawned) {
-            particle.despawn();
+            try {
+                particle.despawn();
+            } catch (e) {
+                console.warn('Failed to despawn particle, will try to reuse anyway');
+            }
         }
         
         this.activeParticles.delete(particle);
         this.particleSpawnTimes.delete(particle);
         
-        // Only keep particles that are properly despawned and have a rigid body
-        if (!particle.isSpawned && particle.rawRigidBody && this.particlePool.length < POOL_SIZE) {
+        // Less strict return conditions - only check if we have room
+        if (this.particlePool.length < POOL_SIZE) {
+            // Try to reset physics state if possible
+            try {
+                particle.rawRigidBody?.setLinearVelocity?.({ x: 0, y: 0, z: 0 });
+                particle.rawRigidBody?.setAngularVelocity?.({ x: 0, y: 0, z: 0 });
+            } catch (e) {
+                // Ignore physics reset errors
+            }
+            
             this.particlePool.push(particle);
             console.log(`Particle returned to pool (pool size: ${this.particlePool.length}/${POOL_SIZE})`);
-        } else {
-            console.log('Discarding potentially problematic particle');
+        }
+
+        // Replenish pool if it's getting low
+        if (this.particlePool.length < POOL_SIZE * 0.2) { // Less than 20% full
+            console.log('Pool running low, creating new particles');
+            const toCreate = Math.min(50, POOL_SIZE - this.particlePool.length);
+            for (let i = 0; i < toCreate; i++) {
+                const newParticle = new Entity({
+                    name: 'ZombieGoreParticle',
+                    modelUri: PARTICLE_MODEL_URI,
+                    modelScale: PARTICLE_SCALE,
+                    rigidBodyOptions: {
+                        type: RigidBodyType.DYNAMIC,
+                        colliders: [{
+                            shape: ColliderShape.BLOCK,
+                            halfExtents: {
+                                x: PARTICLE_SCALE,
+                                y: PARTICLE_SCALE,
+                                z: PARTICLE_SCALE
+                            },
+                            mass: PARTICLE_MASS,
+                            friction: PARTICLE_FRICTION,
+                            bounciness: PARTICLE_BOUNCINESS
+                        }]
+                    }
+                });
+                this.particlePool.push(newParticle);
+            }
+            console.log(`Created ${toCreate} new particles, pool size now: ${this.particlePool.length}/${POOL_SIZE}`);
         }
     }
 
