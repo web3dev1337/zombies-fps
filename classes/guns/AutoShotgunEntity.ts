@@ -10,9 +10,9 @@ export default class AutoShotgunEntity extends ShotgunEntity {
       fireRate: options.fireRate ?? 2,
       iconImageUri: options.iconImageUri ?? 'icons/auto-shotgun.png',
       name: options.name ?? 'Auto Shotgun',
-      maxAmmo: options.maxAmmo ?? 4,
+      maxAmmo: options.maxAmmo ?? 6,
       modelUri: options.modelUri ?? 'models/items/auto-shotgun.glb',
-      reloadTimeMs: options.reloadTimeMs ?? 2500,
+      reloadTimeMs: options.reloadTimeMs ?? 2000,
       ...options,
     });
   }
