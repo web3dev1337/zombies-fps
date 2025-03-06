@@ -255,6 +255,13 @@
   let killStreak = 0;
   let killStreakTimeout;
 
+  // Batch rewards system
+  let pendingRewards = {
+    amount: 0,
+    isHeadshot: false,
+    timeoutId: null
+  };
+
   // Function to show damage numbers
   function showDamageNumber(data) {
     // Extract data from the nested structure
@@ -291,18 +298,37 @@
     }, duration || 1000);
   }
 
-  // Function to show points popup - moved to global scope
+  // Function to show points popup - modified to batch rewards
   function showPointsPopup(amount, isHeadshot) {
-    const pointsFeed = document.querySelector('.points-feed');
-    const popup = document.createElement('div');
-    popup.className = `points-popup ${isHeadshot ? 'headshot' : ''}`;
-    popup.textContent = `+${amount}`;
-    pointsFeed.appendChild(popup);
-    
-    // Remove the popup element after animation
-    setTimeout(() => {
-      popup.remove();
-    }, 1000);
+    // Add to pending rewards
+    pendingRewards.amount += amount;
+    pendingRewards.isHeadshot = pendingRewards.isHeadshot || isHeadshot;
+
+    // Clear existing timeout if any
+    if (pendingRewards.timeoutId) {
+      clearTimeout(pendingRewards.timeoutId);
+    }
+
+    // Set new timeout to show combined rewards
+    pendingRewards.timeoutId = setTimeout(() => {
+      const pointsFeed = document.querySelector('.points-feed');
+      const popup = document.createElement('div');
+      popup.className = `points-popup ${pendingRewards.isHeadshot ? 'headshot' : ''}`;
+      popup.textContent = `+${Math.floor(pendingRewards.amount)}`;
+      pointsFeed.appendChild(popup);
+      
+      // Reset pending rewards
+      pendingRewards = {
+        amount: 0,
+        isHeadshot: false,
+        timeoutId: null
+      };
+      
+      // Remove the popup element after animation
+      setTimeout(() => {
+        popup.remove();
+      }, 1000);
+    }, 16); // Batch rewards within same tick (16ms)
   }
 
   // Function to update kill streak counter - moved to global scope
@@ -814,10 +840,11 @@
     bottom: 100%;
     right: 0;
     width: 100px;
-    height: 100px;
+    height: 60px;
     pointer-events: none;
-    overflow: hidden;
+    overflow: visible;
     z-index: 1000;
+    transform: translateY(50px);
   }
 
   .money-display {
