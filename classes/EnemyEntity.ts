@@ -42,6 +42,13 @@ const WALL_AVOID_FORCE = 0.8;     // How strongly to avoid walls
 const MAX_PATHFINDERS_PER_TICK = 30;  // Reduced to allow more CPU for movement
 let currentTick = 0;
 
+// Add these constants near the top with other constants
+const STUCK_CHECK_INTERVAL_MS = 1000;  // How often to check if stuck
+const STUCK_DISTANCE_THRESHOLD = 0.5;  // If moved less than this in check interval, consider stuck
+const STUCK_DURATION_THRESHOLD = 3000;  // How long to be "stuck" before triggering brute force
+const BRUTE_FORCE_DURATION = 2000;     // How long to apply brute force movement
+const BRUTE_FORCE_SPEED_MULTIPLIER = 1.5; // Speed boost when using brute force
+
 export interface EnemyEntityOptions extends EntityOptions {
   damage: number;
   damageAudioUri?: string;
@@ -72,6 +79,11 @@ export default class EnemyEntity extends Entity {
   private _pathfindAccumulatorMs = 0;
   private _retargetAccumulatorMs = 0;
   private _targetEntity: Entity | undefined;
+  private _lastPosition = { x: 0, y: 0, z: 0 };
+  private _lastPositionCheckTime = 0;
+  private _stuckStartTime = 0;
+  private _isBruteForcing = false;
+  private _bruteForceStartTime = 0;
 
   public constructor(options: EnemyEntityOptions) {
     super({ ...options, tag: 'enemy' });
@@ -276,6 +288,9 @@ export default class EnemyEntity extends Entity {
       return;
     }
 
+    // Check if stuck
+    this._checkIfStuck(tickDeltaMs);
+
     // Get total zombie count and calculate cycle length
     const totalZombies = this.world.entityManager.getEntitiesByTag('enemy').length;
     const cycleLength = Math.max(20, Math.ceil(totalZombies / MAX_PATHFINDERS_PER_TICK));
@@ -299,6 +314,26 @@ export default class EnemyEntity extends Entity {
 
     const targetDistance = this._getTargetDistance(this._targetEntity);
     const pathfindingController = this.controller as PathfindingEntityController;
+
+    // If using brute force movement, override normal behavior
+    if (this._isBruteForcing && this._targetEntity?.position) {
+      // During brute force, ignore walls and move directly towards target with increased speed
+      const bruteForceDirection = {
+        x: this._targetEntity.position.x - this.position.x,
+        y: this._targetEntity.position.y - this.position.y,
+        z: this._targetEntity.position.z - this.position.z
+      };
+      
+      pathfindingController.move(bruteForceDirection, this.speed * BRUTE_FORCE_SPEED_MULTIPLIER);
+      pathfindingController.face(this._targetEntity.position, this.speed * 2);
+
+      // Check if brute force duration has expired
+      if (Date.now() - this._bruteForceStartTime > BRUTE_FORCE_DURATION) {
+        this._isBruteForcing = false;
+        this._stuckStartTime = 0; // Reset stuck timer
+      }
+      return;
+    }
 
     // Very close range - use direct movement with wall avoidance
     if (targetDistance <= CLOSE_RANGE) {
@@ -484,5 +519,46 @@ export default class EnemyEntity extends Entity {
       y: targetPosition.y,
       z: targetPosition.z + avoidanceZ
     };
+  }
+
+  /**
+   * Checks if the entity is stuck by monitoring its movement over time
+   */
+  private _checkIfStuck(tickDeltaMs: number) {
+    const currentTime = Date.now();
+
+    // Initialize last position if not set
+    if (!this._lastPositionCheckTime) {
+      this._lastPosition = { ...this.position };
+      this._lastPositionCheckTime = currentTime;
+      return;
+    }
+
+    // Check position periodically
+    if (currentTime - this._lastPositionCheckTime > STUCK_CHECK_INTERVAL_MS) {
+      const distanceMoved = Math.sqrt(
+        Math.pow(this.position.x - this._lastPosition.x, 2) +
+        Math.pow(this.position.y - this._lastPosition.y, 2) +
+        Math.pow(this.position.z - this._lastPosition.z, 2)
+      );
+
+      // If barely moved, might be stuck
+      if (distanceMoved < STUCK_DISTANCE_THRESHOLD) {
+        if (!this._stuckStartTime) {
+          this._stuckStartTime = currentTime;
+        } else if (currentTime - this._stuckStartTime > STUCK_DURATION_THRESHOLD && !this._isBruteForcing) {
+          // Initiate brute force movement
+          this._isBruteForcing = true;
+          this._bruteForceStartTime = currentTime;
+        }
+      } else {
+        // Reset stuck detection if moving normally
+        this._stuckStartTime = 0;
+      }
+
+      // Update last position
+      this._lastPosition = { ...this.position };
+      this._lastPositionCheckTime = currentTime;
+    }
   }
 }
