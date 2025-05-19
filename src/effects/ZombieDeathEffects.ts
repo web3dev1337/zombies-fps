@@ -1,6 +1,16 @@
 import { Entity, RigidBodyType, ColliderShape, World, CollisionGroup } from 'hytopia';
 import type { Vector3Like } from 'hytopia';
 
+// Toggle this flag to enable verbose debug logs for death effects
+const DEBUG_ZOMBIE_DEATH_EFFECTS = false;
+
+// Helper to avoid repeated conditional checks
+const debugLog = (...args: any[]) => {
+    if (DEBUG_ZOMBIE_DEATH_EFFECTS) {
+        console.log(...args);
+    }
+};
+
 // Death effect configuration
 const PARTICLE_COUNT = 15;
 const PARTICLE_SCALE = 0.4;
@@ -54,7 +64,7 @@ export class ZombieDeathEffects {
         this.world = world;
         
         // Preload the particle pool
-        console.log('Preloading particle pool...');
+        debugLog('Preloading particle pool...');
         for (let i = 0; i < POOL_SIZE; i++) {
             const particle = new Entity({
                 name: 'ZombieGoreParticle',
@@ -84,7 +94,7 @@ export class ZombieDeathEffects {
 
             this.particlePool.push(particle);
         }
-        console.log(`Particle pool preloaded with ${POOL_SIZE} particles`);
+        debugLog(`Particle pool preloaded with ${POOL_SIZE} particles`);
 
         // Start the cleanup interval
         this.cleanupInterval = setInterval(() => this.forceCleanupParticles(), 5000);
@@ -129,7 +139,7 @@ export class ZombieDeathEffects {
 
         // If the particle is spawned or we can't reset it properly, create a new one
         if (particle.isSpawned || !particle.rawRigidBody) {
-            console.log('Creating new particle to replace unusable one');
+            debugLog('Creating new particle to replace unusable one');
             particle = new Entity({
                 name: 'ZombieGoreParticle',
                 modelUri: PARTICLE_MODEL_URI,
@@ -158,7 +168,7 @@ export class ZombieDeathEffects {
             });
         } else if (particle.modelScale !== scale) {
             // If scale doesn't match, create new particle with correct scale
-            console.log('Creating new particle with different scale');
+            debugLog('Creating new particle with different scale');
             particle = new Entity({
                 name: 'ZombieGoreParticle',
                 modelUri: PARTICLE_MODEL_URI,
@@ -192,7 +202,7 @@ export class ZombieDeathEffects {
                 particle.rawRigidBody.setAngularVelocity?.({ x: 0, y: 0, z: 0 });
             } catch (e) {
                 // If we can't reset physics, create a new particle
-                console.log('Creating new particle due to physics reset failure');
+                debugLog('Creating new particle due to physics reset failure');
                 particle = new Entity({
                     name: 'ZombieGoreParticle',
                     modelUri: PARTICLE_MODEL_URI,
@@ -252,12 +262,12 @@ export class ZombieDeathEffects {
             }
             
             this.particlePool.push(particle);
-            console.log(`Particle returned to pool (pool size: ${this.particlePool.length}/${POOL_SIZE})`);
+            debugLog(`Particle returned to pool (pool size: ${this.particlePool.length}/${POOL_SIZE})`);
         }
 
         // Replenish pool if it's getting low
         if (this.particlePool.length < POOL_SIZE * 0.2) { // Less than 20% full
-            console.log('Pool running low, creating new particles');
+            debugLog('Pool running low, creating new particles');
             const toCreate = Math.min(50, POOL_SIZE - this.particlePool.length);
             for (let i = 0; i < toCreate; i++) {
                 const newParticle = new Entity({
@@ -289,16 +299,16 @@ export class ZombieDeathEffects {
 
                 this.particlePool.push(newParticle);
             }
-            console.log(`Created ${toCreate} new particles, pool size now: ${this.particlePool.length}/${POOL_SIZE}`);
+            debugLog(`Created ${toCreate} new particles, pool size now: ${this.particlePool.length}/${POOL_SIZE}`);
         }
     }
 
     createDeathEffect(position: Vector3Like, scale: number = 1): void {
         if (!this.world) return;
 
-        console.log('\n=== Death Effect Debug Info ===');
-        console.log(`Pool Status - Size: ${this.particlePool.length}/${POOL_SIZE}, Active: ${this.activeParticles.size}/${MAX_ACTIVE_PARTICLES}`);
-        console.log('Creating death effect at position:', position);
+        debugLog('\n=== Death Effect Debug Info ===');
+        debugLog(`Pool Status - Size: ${this.particlePool.length}/${POOL_SIZE}, Active: ${this.activeParticles.size}/${MAX_ACTIVE_PARTICLES}`);
+        debugLog('Creating death effect at position:', position);
 
         // Pre-calculate values
         const angleIncrement = (Math.PI * 2) / PARTICLE_COUNT;
@@ -381,10 +391,10 @@ export class ZombieDeathEffects {
             }, PARTICLE_LIFETIME_MS);
         });
 
-        console.log('=== Death Effect Summary ===');
-        console.log('Successfully spawned particles:', successfulSpawns);
-        console.log('Final pool size:', this.particlePool.length);
-        console.log('Final active particles:', this.activeParticles.size);
+        debugLog('=== Death Effect Summary ===');
+        debugLog('Successfully spawned particles:', successfulSpawns);
+        debugLog('Final pool size:', this.particlePool.length);
+        debugLog('Final active particles:', this.activeParticles.size);
     }
 
     cleanup(): void {
@@ -407,8 +417,8 @@ export class ZombieDeathEffects {
     createHitEffect(position: Vector3Like, hitDirection: Vector3Like): void {
         if (!this.world) return;
 
-        console.log('\n=== Hit Effect Debug Info ===');
-        console.log(`Pool Status - Size: ${this.particlePool.length}/${POOL_SIZE}, Active: ${this.activeParticles.size}/${MAX_ACTIVE_PARTICLES}`);
+        debugLog('\n=== Hit Effect Debug Info ===');
+        debugLog(`Pool Status - Size: ${this.particlePool.length}/${POOL_SIZE}, Active: ${this.activeParticles.size}/${MAX_ACTIVE_PARTICLES}`);
 
         const particlesToSpawn = Math.min(HIT_PARTICLE_COUNT, MAX_ACTIVE_PARTICLES - this.activeParticles.size);
         let successfulSpawns = 0;
@@ -485,9 +495,9 @@ export class ZombieDeathEffects {
             }, HIT_PARTICLE_LIFETIME_MS);
         });
 
-        console.log('=== Hit Effect Summary ===');
-        console.log('Successfully spawned particles:', successfulSpawns);
-        console.log('Final pool size:', this.particlePool.length);
-        console.log('Final active particles:', this.activeParticles.size);
+        debugLog('=== Hit Effect Summary ===');
+        debugLog('Successfully spawned particles:', successfulSpawns);
+        debugLog('Final pool size:', this.particlePool.length);
+        debugLog('Final active particles:', this.activeParticles.size);
     }
 } 
