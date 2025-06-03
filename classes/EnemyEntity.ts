@@ -254,7 +254,15 @@ export default class EnemyEntity extends Entity {
       }
       
       // Send appropriate UI notification
-      if (fromPlayer && hitPoint) {
+      if (fromPlayer) {
+        // Use enemy center position for damage number display, not the exact hit point
+        // This ensures damage numbers appear above the enemy properly
+        const damageNumberPosition = {
+          x: this.position.x,
+          y: this.position.y + 1.5, // Offset above enemy center
+          z: this.position.z
+        };
+        
         // Create hit info for score calculation and display
         const hitInfo: HitInfo = {
           playerId: fromPlayer.player.id,
@@ -263,7 +271,7 @@ export default class EnemyEntity extends Entity {
           targetSpeed: this.getSpeed(),
           isHeadshot: !!isHeadshot,
           isKill: this.health <= 0,
-          hitPosition: hitPoint,
+          hitPosition: damageNumberPosition,
           spawnOrigin: this.position
         };
         
