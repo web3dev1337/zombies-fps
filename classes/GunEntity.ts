@@ -310,6 +310,13 @@ export default abstract class GunEntity extends Entity {
       if (raycastHit?.hitEntity && raycastHit.hitEntity instanceof EnemyEntity) {
         const hitEntity = raycastHit.hitEntity;
         const hitPoint = raycastHit.hitPoint;
+        
+        console.log('GunEntity raycast hit:', { 
+          hasHitEntity: !!hitEntity, 
+          hasHitPoint: !!hitPoint, 
+          hitPointValue: hitPoint,
+          raycastHit: Object.keys(raycastHit || {})
+        });
 
         // Calculate damage with random variation
         const actualDamage = this.calculateDamageWithVariation();

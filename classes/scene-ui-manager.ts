@@ -94,6 +94,14 @@ export class SceneUIManager {
    * Show hit notification at the hit position
    */
   public showHitNotification(worldPosition: Vector3Like, damage: number, player: Player, isHeadshot: boolean = false, spawnOrigin?: Vector3Like): void {
+    console.log('SceneUIManager.showHitNotification called:', {
+      worldPosition,
+      damage,
+      player: player?.username,
+      isHeadshot,
+      spawnOrigin
+    });
+    
     // Calculate distance multiplier if spawn origin is available
     let distanceMultiplier = 1;
     if (worldPosition && spawnOrigin) {
@@ -132,6 +140,17 @@ export class SceneUIManager {
     });
 
     // Create and load the Scene UI for damage notification
+    console.log('Creating SceneUI with:', {
+      templateId: 'damage-notification',
+      position: {
+        x: worldPosition.x,
+        y: worldPosition.y + SceneUIManager.VERTICAL_OFFSET + (isHeadshot ? 0.2 : 0),
+        z: worldPosition.z
+      },
+      damage: Math.floor(damage),
+      worldExists: !!this.world
+    });
+    
     const damageNotification = new SceneUI({
       templateId: 'damage-notification',
       position: {
@@ -146,6 +165,7 @@ export class SceneUIManager {
       }
     });
 
+    console.log('Loading SceneUI...');
     damageNotification.load(this.world);
 
     // Cleanup with buffer

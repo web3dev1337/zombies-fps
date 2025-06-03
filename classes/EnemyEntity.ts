@@ -254,6 +254,8 @@ export default class EnemyEntity extends Entity {
       }
       
       // Send appropriate UI notification
+      console.log('takeDamage UI check:', { fromPlayer: !!fromPlayer, hitPoint: !!hitPoint, hitPointValue: hitPoint });
+      
       if (fromPlayer && hitPoint) {
         // Create hit info for score calculation and display
         const hitInfo: HitInfo = {
