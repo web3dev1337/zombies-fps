@@ -94,6 +94,11 @@ export default class EnemyEntity extends Entity {
   private _audioCheckAccumulatorMs = 0;
   private readonly AUDIO_CHECK_INTERVAL_MS = 500; // Check audio state every 500ms
   private readonly AUDIO_DISTANCE_THRESHOLD = 30; // Only play audio within 30 units of a player
+  
+  // Phase 1 pathfinding improvements
+  private _environmentCheckAccumulatorMs = 0;
+  private readonly ENVIRONMENT_CHECK_INTERVAL_MS = 200; // Check environment periodically
+  private _currentEnvironment: { type: 'open' | 'corner' | 'enclosed' | 'edge'; escapeDirection?: Vector3Like } = { type: 'open' };
 
   public constructor(options: EnemyEntityOptions) {
     super({ ...options, tag: 'enemy' });
@@ -318,6 +323,168 @@ export default class EnemyEntity extends Entity {
   }
 
   /**
+   * Get blended movement parameters based on distance for smooth transitions
+   */
+  private _getBlendedMovementParams(distance: number): {
+    usePathfinding: boolean;
+    pathfindingWeight: number;
+    directWeight: number;
+    speedMultiplier: number;
+  } {
+    // Smooth blend zone from 3 to 6 units
+    if (distance <= 3) {
+      return {
+        usePathfinding: false,
+        pathfindingWeight: 0,
+        directWeight: 1,
+        speedMultiplier: 1.2
+      };
+    } else if (distance <= 6) {
+      // Linear interpolation in blend zone
+      const t = (distance - 3) / 3; // 0 to 1
+      return {
+        usePathfinding: true,
+        pathfindingWeight: t,
+        directWeight: 1 - t,
+        speedMultiplier: 1.2 - (0.3 * t) // 1.2 to 0.9
+      };
+    } else if (distance <= 20) {
+      return {
+        usePathfinding: true,
+        pathfindingWeight: 1,
+        directWeight: 0,
+        speedMultiplier: 0.9
+      };
+    } else {
+      return {
+        usePathfinding: false,
+        pathfindingWeight: 0,
+        directWeight: 1,
+        speedMultiplier: 0.7
+      };
+    }
+  }
+
+  /**
+   * Check if there's a clear line of sight to the target
+   */
+  private _hasLineOfSight(target: Entity): boolean {
+    if (!this.world || !target.position) return false;
+    
+    const direction = {
+      x: target.position.x - this.position.x,
+      y: target.position.y - this.position.y,
+      z: target.position.z - this.position.z
+    };
+    
+    const distance = Math.sqrt(
+      direction.x * direction.x + 
+      direction.y * direction.y + 
+      direction.z * direction.z
+    );
+    
+    if (distance === 0) return true;
+    
+    // Check if direct path is clear (only check for blocks/walls)
+    const hit = this.world.simulation.raycast(
+      this.position,
+      { 
+        x: direction.x / distance, 
+        y: direction.y / distance, 
+        z: direction.z / distance 
+      },
+      distance,
+      {
+        filterExcludeRigidBody: this.rawRigidBody,
+      }
+    );
+    
+    // If we hit something, check if it's a block/wall or just another entity
+    if (hit && hit.hitEntity) {
+      // If we hit another entity (not a block), consider it as having line of sight
+      return true;
+    }
+    
+    return !hit; // No hit means clear line of sight
+  }
+
+  /**
+   * Detect the environment type (corner, enclosed, etc.)
+   */
+  private _detectEnvironment(): {
+    type: 'open' | 'corner' | 'enclosed' | 'edge';
+    escapeDirection?: Vector3Like;
+  } {
+    if (!this.world) return { type: 'open' };
+    
+    // 8 directional checks
+    const angles = [0, 45, 90, 135, 180, 225, 270, 315];
+    const checkDistance = 2.0;
+    const hits: boolean[] = [];
+    const freeDirections: Vector3Like[] = [];
+    
+    for (const angle of angles) {
+      const rad = (angle * Math.PI) / 180;
+      const direction = {
+        x: Math.cos(rad),
+        y: 0,
+        z: Math.sin(rad)
+      };
+      
+      const hit = this.world.simulation.raycast(
+        this.position,
+        direction,
+        checkDistance,
+        {
+          filterExcludeRigidBody: this.rawRigidBody,
+        }
+      );
+      
+      // Only count hits on actual walls/blocks, not other entities
+      const isWallHit = hit && (!hit.hitEntity || hit.hitEntity.tag !== 'enemy');
+      hits.push(isWallHit);
+      
+      if (!isWallHit) {
+        freeDirections.push(direction);
+      }
+    }
+    
+    const hitCount = hits.filter(h => h).length;
+    
+    // Determine environment type
+    if (hitCount >= 7) {
+      // Almost fully enclosed - find best escape
+      return {
+        type: 'enclosed',
+        escapeDirection: freeDirections[0] || { x: 0, y: 0, z: -1 }
+      };
+    } else if (hitCount >= 5) {
+      // In a corner - calculate escape direction
+      if (freeDirections.length > 0) {
+        const escapeX = freeDirections.reduce((sum, dir) => sum + dir.x, 0);
+        const escapeZ = freeDirections.reduce((sum, dir) => sum + dir.z, 0);
+        const magnitude = Math.sqrt(escapeX * escapeX + escapeZ * escapeZ);
+        
+        if (magnitude > 0) {
+          return {
+            type: 'corner',
+            escapeDirection: {
+              x: escapeX / magnitude,
+              y: 0,
+              z: escapeZ / magnitude
+            }
+          };
+        }
+      }
+      return { type: 'corner' };
+    } else if (hitCount >= 2) {
+      return { type: 'edge' };
+    }
+    
+    return { type: 'open' };
+  }
+
+  /**
    * Check if audio should be playing based on distance to nearest player
    */
   private _updateAudioState(tickDeltaMs: number): void {
@@ -383,6 +550,22 @@ export default class EnemyEntity extends Entity {
 
     // Check if stuck
     this._checkIfStuck(tickDeltaMs);
+    
+    // Update environment detection periodically
+    this._environmentCheckAccumulatorMs += tickDeltaMs;
+    if (this._environmentCheckAccumulatorMs >= this.ENVIRONMENT_CHECK_INTERVAL_MS) {
+      this._currentEnvironment = this._detectEnvironment();
+      this._environmentCheckAccumulatorMs = 0;
+      
+      // Reduce stuck threshold in corners
+      if (this._currentEnvironment.type === 'corner' || this._currentEnvironment.type === 'enclosed') {
+        // In corners, trigger brute force faster
+        if (this._stuckStartTime && Date.now() - this._stuckStartTime > 1000) {
+          this._isBruteForcing = true;
+          this._bruteForceStartTime = Date.now();
+        }
+      }
+    }
 
     // Get total zombie count and calculate cycle length
     const totalZombies = this.world.entityManager.getEntitiesByTag('enemy').length;
@@ -410,14 +593,22 @@ export default class EnemyEntity extends Entity {
 
     // If using brute force movement, override normal behavior
     if (this._isBruteForcing && this._targetEntity?.position) {
-      // During brute force, ignore walls and move directly towards target with increased speed
-      const bruteForceDirection = {
-        x: this._targetEntity.position.x - this.position.x,
-        y: this._targetEntity.position.y - this.position.y,
-        z: this._targetEntity.position.z - this.position.z
-      };
+      // During brute force, use escape direction if in corner
+      let moveDirection;
       
-      pathfindingController.move(bruteForceDirection, this.speed * BRUTE_FORCE_SPEED_MULTIPLIER);
+      if (this._currentEnvironment.escapeDirection) {
+        // Use environment-aware escape direction
+        moveDirection = this._currentEnvironment.escapeDirection;
+      } else {
+        // Fallback to direct movement
+        moveDirection = {
+          x: this._targetEntity.position.x - this.position.x,
+          y: this._targetEntity.position.y - this.position.y,
+          z: this._targetEntity.position.z - this.position.z
+        };
+      }
+      
+      pathfindingController.move(moveDirection, this.speed * BRUTE_FORCE_SPEED_MULTIPLIER);
       pathfindingController.face(this._targetEntity.position, this.speed * 2);
 
       // Check if brute force duration has expired
@@ -427,27 +618,46 @@ export default class EnemyEntity extends Entity {
       }
       return;
     }
+    
+    // Handle corner/enclosed environments with priority
+    if ((this._currentEnvironment.type === 'corner' || this._currentEnvironment.type === 'enclosed') && 
+        this._currentEnvironment.escapeDirection) {
+      // Move in escape direction at increased speed
+      pathfindingController.move(
+        this._currentEnvironment.escapeDirection, 
+        this.speed * 1.3 // Boost speed to escape corners
+      );
+      pathfindingController.face(this._targetEntity.position, this.speed);
+      return;
+    }
 
-    // Very close range - use direct movement with wall avoidance
-    if (targetDistance <= CLOSE_RANGE) {
-      if (this._targetEntity?.position) {
-        const moveDirection = this._getWallAvoidanceDirection(this._targetEntity.position);
-        
-        // Apply wall-aware movement
-        pathfindingController.move(moveDirection, this.speed * CLOSE_RANGE_SPEED_MULTIPLIER);
-        pathfindingController.face(this._targetEntity.position, this.speed * 2);
-        
-        // Proximity-based damage check as backup for collision detection
-        if (targetDistance <= 1.5 && this._targetEntity instanceof GamePlayerEntity) {
-          const now = Date.now();
-          const lastDamageTime = this._lastDamageTime[this._targetEntity.player.id] || 0;
-          
-          if (now - lastDamageTime >= DAMAGE_COOLDOWN_MS) {
-            this._targetEntity.takeDamage(this.damage);
-            this._lastDamageTime[this._targetEntity.player.id] = now;
-          }
-        }
+    // Get blended movement parameters based on distance
+    const movementParams = this._getBlendedMovementParams(targetDistance);
+    
+    // Handle proximity damage before movement
+    if (targetDistance <= 1.5 && this._targetEntity instanceof GamePlayerEntity) {
+      const now = Date.now();
+      const lastDamageTime = this._lastDamageTime[this._targetEntity.player.id] || 0;
+      
+      if (now - lastDamageTime >= DAMAGE_COOLDOWN_MS) {
+        this._targetEntity.takeDamage(this.damage);
+        this._lastDamageTime[this._targetEntity.player.id] = now;
       }
+    }
+    
+    // Check line of sight for smart pathfinding decisions
+    const hasLineOfSight = this._hasLineOfSight(this._targetEntity);
+    
+    // If very close and have line of sight, use direct movement
+    if (targetDistance <= 4 && hasLineOfSight) {
+      const directDirection = {
+        x: this._targetEntity.position.x - this.position.x,
+        y: 0,
+        z: this._targetEntity.position.z - this.position.z
+      };
+      
+      pathfindingController.move(directDirection, this.speed * movementParams.speedMultiplier);
+      pathfindingController.face(this._targetEntity.position, this.speed * 2);
       return;
     }
 
@@ -455,37 +665,64 @@ export default class EnemyEntity extends Entity {
     const mySlot = this.id % cycleLength;
     const canPathfindThisTick = mySlot === currentTick;
 
-    if (targetDistance <= MID_RANGE) {
-      // Mid range - use full pathfinding when it's our turn
-      if (canPathfindThisTick && (this._pathfindAccumulatorMs > PATHFIND_ACCUMULATOR_THRESHOLD_MS || !this._isPathfinding)) {
-        if (this._targetEntity?.position) {
-          this._isPathfinding = pathfindingController.pathfind(this._targetEntity.position, this.speed * MID_RANGE_SPEED_MULTIPLIER, {
-            maxFall: this.jumpHeight * 2,      // Increased to handle larger gaps
-            maxJump: this.jumpHeight * 2,      // Increased to handle higher obstacles
-            maxOpenSetIterations: 400,         // Increased for better path finding
-            verticalPenalty: this.preferJumping ? 0.5 : 2,  // Adjusted for better vertical movement
+    // Use blended movement based on parameters
+    if (movementParams.usePathfinding) {
+      // Should use pathfinding (either full or blended)
+      const shouldPathfind = canPathfindThisTick && 
+        (this._pathfindAccumulatorMs > PATHFIND_ACCUMULATOR_THRESHOLD_MS || !this._isPathfinding) &&
+        (!hasLineOfSight || targetDistance > 6); // Don't pathfind if very close with line of sight
+      
+      if (shouldPathfind && this._targetEntity?.position) {
+        this._isPathfinding = pathfindingController.pathfind(
+          this._targetEntity.position, 
+          this.speed * movementParams.speedMultiplier, 
+          {
+            maxFall: this.jumpHeight * 2,
+            maxJump: this.jumpHeight * 2,
+            maxOpenSetIterations: targetDistance <= 10 ? 200 : 400, // Less iterations for closer targets
+            verticalPenalty: this.preferJumping ? 0.5 : 2,
             pathfindAbortCallback: () => {
               this._isPathfinding = false;
               if (this._targetEntity?.position) {
-                // On pathfinding failure, try to move around obstacles
+                // On pathfinding failure, use wall avoidance
                 const moveDirection = this._getWallAvoidanceDirection(this._targetEntity.position);
-                pathfindingController.move(moveDirection, this.speed * MID_RANGE_SPEED_MULTIPLIER);
+                pathfindingController.move(moveDirection, this.speed * movementParams.speedMultiplier);
               }
             },
             pathfindCompleteCallback: () => this._isPathfinding = false,
-          });
-          this._pathfindAccumulatorMs = 0;
-        }
+          }
+        );
+        this._pathfindAccumulatorMs = 0;
       } else if (this._targetEntity?.position && !this._isPathfinding) {
-        // Not our turn or pathfinding failed - use wall-aware movement
-        const moveDirection = this._getWallAvoidanceDirection(this._targetEntity.position);
-        pathfindingController.move(moveDirection, this.speed * MID_RANGE_SPEED_MULTIPLIER);
+        // Not pathfinding - use movement based on blend weights
+        if (movementParams.directWeight > 0) {
+          // Blend or pure direct movement
+          const directDirection = {
+            x: this._targetEntity.position.x - this.position.x,
+            y: 0,
+            z: this._targetEntity.position.z - this.position.z
+          };
+          
+          // If in blend zone, apply wall avoidance
+          const moveDirection = movementParams.pathfindingWeight > 0 ? 
+            this._getWallAvoidanceDirection(this._targetEntity.position) : 
+            directDirection;
+            
+          pathfindingController.move(moveDirection, this.speed * movementParams.speedMultiplier);
+        }
       }
     } else {
-      // Far range - use simple movement with basic wall avoidance
+      // Pure direct movement (very close or very far)
       if (this._targetEntity?.position) {
-        const moveDirection = this._getWallAvoidanceDirection(this._targetEntity.position);
-        pathfindingController.move(moveDirection, this.speed * FAR_RANGE_SPEED_MULTIPLIER);
+        const moveDirection = targetDistance > 30 ? 
+          this._getWallAvoidanceDirection(this._targetEntity.position) : // Far: use wall avoidance
+          { // Close: direct movement
+            x: this._targetEntity.position.x - this.position.x,
+            y: 0,
+            z: this._targetEntity.position.z - this.position.z
+          };
+        
+        pathfindingController.move(moveDirection, this.speed * movementParams.speedMultiplier);
       }
     }
 
