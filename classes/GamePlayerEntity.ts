@@ -130,10 +130,9 @@ export default class GamePlayerEntity extends PlayerEntity {
       angle: Math.PI / 3.5 + 0.1,
       penumbra: 0.1,
       attachedToEntity: this,
-      trackedEntity: this,
       type: LightType.SPOTLIGHT,
       intensity: 4,
-      offset: { x: 0, y: 0, z: 0.1 }, 
+      offset: { x: 0, y: 0.5, z: 0.1 }, 
       color: { r: 255, g: 255, b: 255 },
     });
 
@@ -285,6 +284,18 @@ export default class GamePlayerEntity extends PlayerEntity {
     }
 
     const { input } = payload;
+
+    // Update flashlight to point in camera direction
+    if (this._light && this._light.isSpawned) {
+      // Calculate a position in front of the player based on camera direction
+      const cameraDir = this.player.camera.facingDirection;
+      const distance = 10; // Distance in front to point the light
+      this._light.setTrackedPosition({
+        x: this.position.x + cameraDir.x * distance,
+        y: this.position.y + cameraDir.y * distance,
+        z: this.position.z + cameraDir.z * distance
+      });
+    }
 
     if (!this._gun) {
       return;
