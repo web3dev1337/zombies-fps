@@ -16,7 +16,7 @@ import type {
 
 import EnemyEntity from './EnemyEntity';
 import type GamePlayerEntity from './GamePlayerEntity';
-import { ZombieDeathEffects } from '../src/effects/ZombieDeathEffects';
+import { ZombieDeathEffects } from './effects/ZombieDeathEffects';
 import GameAudioManager from './GameAudioManager';
 
 export type GunHand = 'left' | 'right' | 'both';
