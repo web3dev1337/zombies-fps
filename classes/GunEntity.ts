@@ -213,9 +213,16 @@ export default abstract class GunEntity extends Entity {
 
     const playerEntityController = this.parent.controller as PlayerEntityController;
 
-    playerEntityController.idleLoopedAnimations = [ this.idleAnimation, 'idle_lower' ];
-    playerEntityController.walkLoopedAnimations = [ this.idleAnimation, 'walk_lower' ];
-    playerEntityController.runLoopedAnimations = [ this.idleAnimation, 'run_lower' ];
+    // Safely update animations if properties exist
+    if ('idleLoopedAnimations' in playerEntityController) {
+      (playerEntityController as any).idleLoopedAnimations = [ this.idleAnimation, 'idle_lower' ];
+    }
+    if ('walkLoopedAnimations' in playerEntityController) {
+      (playerEntityController as any).walkLoopedAnimations = [ this.idleAnimation, 'walk_lower' ];
+    }
+    if ('runLoopedAnimations' in playerEntityController) {
+      (playerEntityController as any).runLoopedAnimations = [ this.idleAnimation, 'run_lower' ];
+    }
   }
 
   // override to create specific gun shoot logic

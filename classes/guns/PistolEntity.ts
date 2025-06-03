@@ -41,7 +41,9 @@ export default class PistolEntity extends GunEntity {
     super.shoot();
 
     // cancel the input, pistols require click to shoot
-    parentPlayerEntity.player.input.ml = false;
+    if (parentPlayerEntity.player.input && 'ml' in parentPlayerEntity.player.input) {
+      (parentPlayerEntity.player.input as any).ml = false;
+    }
 
     // play shoot animation
     parentPlayerEntity.startModelOneshotAnimations([ 'shoot_gun_right' ]);

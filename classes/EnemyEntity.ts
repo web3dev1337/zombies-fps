@@ -153,38 +153,44 @@ export default class EnemyEntity extends Entity {
     }
 
     // Attempt to retrieve the loaded model from the entity.
-    const modelInstance = (this as any).renderObject;
-    if (!modelInstance) {
+    // Note: This accesses internal SDK properties which may change in future versions
+    try {
+      const modelInstance = (this as any).renderObject;
+      if (!modelInstance || typeof modelInstance.getObjectByName !== 'function') {
+        return false;
+      }
+
+      const headNode = modelInstance.getObjectByName('head');
+      if (!headNode) {
+        return false;
+      }
+
+      // Get world position of head node
+      const headPosition = {
+        x: 0,
+        y: 0,
+        z: 0
+      };
+      
+      // Get the world matrix of the head node
+      const worldMatrix = headNode.matrixWorld;
+      headPosition.x = worldMatrix.elements[12];
+      headPosition.y = worldMatrix.elements[13];
+      headPosition.z = worldMatrix.elements[14];
+
+      const scale = this.modelScale ?? 1;
+      const headRadius = 0.3 * scale;
+      const headHeight = 0.4 * scale;
+
+      const dx = Math.abs(hitPoint.x - headPosition.x);
+      const dy = Math.abs(hitPoint.y - headPosition.y);
+      const dz = Math.abs(hitPoint.z - headPosition.z);
+      
+      return dx <= headRadius && dy <= headHeight && dz <= headRadius;
+    } catch (error) {
+      // If we can't access the model, assume no headshot
       return false;
     }
-
-    const headNode = modelInstance.getObjectByName('head');
-    if (!headNode) {
-      return false;
-    }
-
-    // Get world position of head node
-    const headPosition = {
-      x: 0,
-      y: 0,
-      z: 0
-    };
-    
-    // Get the world matrix of the head node
-    const worldMatrix = headNode.matrixWorld;
-    headPosition.x = worldMatrix.elements[12];
-    headPosition.y = worldMatrix.elements[13];
-    headPosition.z = worldMatrix.elements[14];
-
-    const scale = this.modelScale ?? 1;
-    const headRadius = 0.3 * scale;
-    const headHeight = 0.4 * scale;
-
-    const dx = Math.abs(hitPoint.x - headPosition.x);
-    const dy = Math.abs(hitPoint.y - headPosition.y);
-    const dz = Math.abs(hitPoint.z - headPosition.z);
-    
-    return dx <= headRadius && dy <= headHeight && dz <= headRadius;
   }
   
   /**
