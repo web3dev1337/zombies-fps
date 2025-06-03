@@ -407,6 +407,10 @@ export default class EnemyEntity extends Entity {
 
     const targetDistance = this._getTargetDistance(this._targetEntity);
     const pathfindingController = this.controller as PathfindingEntityController;
+    
+    // Check if it's this zombie's turn to pathfind (moved up to fix error)
+    const mySlot = this.id % cycleLength;
+    const canPathfindThisTick = mySlot === currentTick;
 
     // If using brute force movement, override normal behavior
     if (this._isBruteForcing && this._targetEntity?.position) {
@@ -482,10 +486,6 @@ export default class EnemyEntity extends Entity {
       }
       return;
     }
-
-    // Check if it's this zombie's turn to pathfind
-    const mySlot = this.id % cycleLength;
-    const canPathfindThisTick = mySlot === currentTick;
 
     if (targetDistance <= MID_RANGE) {
       // Mid range - use full pathfinding when it's our turn
