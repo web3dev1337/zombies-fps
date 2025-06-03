@@ -79,6 +79,7 @@ export default class EnemyEntity extends Entity {
 
   private _damageAudio: Audio | undefined;
   private _idleAudio: Audio | undefined;
+  private _idleAudioConfig: { uri: string; volume: number; referenceDistance: number } | undefined;
   private _isPathfinding = false;
   private _pathfindAccumulatorMs = 0;
   private _retargetAccumulatorMs = 0;
@@ -121,15 +122,12 @@ export default class EnemyEntity extends Entity {
       });
     }
 
-    if (options.idleAudioUri) {
-      this._idleAudio = new Audio({
-        attachedToEntity: this,
-        uri: options.idleAudioUri,
-        volume: options.idleAudioVolume ?? 0.2,  // Increased default volume
-        loop: true,
-        referenceDistance: options.idleAudioReferenceDistance ?? 5 // Increased from 1 to hear zombies from further away
-      });
-    }
+    // Store audio config for later use
+    this._idleAudioConfig = options.idleAudioUri ? {
+      uri: options.idleAudioUri,
+      volume: options.idleAudioVolume ?? 0.2,
+      referenceDistance: options.idleAudioReferenceDistance ?? 5
+    } : undefined;
 
     this.on(EntityEvent.ENTITY_COLLISION, this._onEntityCollision);
     this.on(EntityEvent.TICK, this._onTick);
@@ -145,11 +143,8 @@ export default class EnemyEntity extends Entity {
   }
 
   public override despawn(): void {
-    // Stop audio before despawning
-    if (this._isIdleAudioPlaying && this._idleAudio) {
-      this._idleAudio.stop();
-      this._isIdleAudioPlaying = false;
-    }
+    // Mark audio as not playing (audio will stop automatically when entity despawns)
+    this._isIdleAudioPlaying = false;
     
     super.despawn();
   }
@@ -326,7 +321,7 @@ export default class EnemyEntity extends Entity {
    * Check if audio should be playing based on distance to nearest player
    */
   private _updateAudioState(tickDeltaMs: number): void {
-    if (!this.world || !this._idleAudio) return;
+    if (!this.world || !this._idleAudioConfig) return;
 
     this._audioCheckAccumulatorMs += tickDeltaMs;
     
@@ -350,13 +345,25 @@ export default class EnemyEntity extends Entity {
     
     const shouldPlayAudio = nearestPlayerDistance <= this.AUDIO_DISTANCE_THRESHOLD;
     
-    // Start or stop audio based on distance
+    // Only create and play audio when needed
     if (shouldPlayAudio && !this._isIdleAudioPlaying) {
+      // Create audio on demand
+      if (!this._idleAudio) {
+        this._idleAudio = new Audio({
+          attachedToEntity: this,
+          uri: this._idleAudioConfig.uri,
+          volume: this._idleAudioConfig.volume,
+          loop: true,
+          referenceDistance: this._idleAudioConfig.referenceDistance
+        });
+      }
       this._idleAudio.play(this.world, true);
       this._isIdleAudioPlaying = true;
     } else if (!shouldPlayAudio && this._isIdleAudioPlaying) {
-      this._idleAudio.stop();
+      // Just mark as not playing - audio will stop when entity despawns
       this._isIdleAudioPlaying = false;
+      // Clear the audio reference to save memory
+      this._idleAudio = undefined;
     }
   }
 
