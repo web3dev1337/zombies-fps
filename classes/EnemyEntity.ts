@@ -428,16 +428,48 @@ export default class EnemyEntity extends Entity {
       return;
     }
 
-    // Very close range - use direct movement with wall avoidance
+    // Very close range - check if we have line of sight first
     if (targetDistance <= CLOSE_RANGE) {
       if (this._targetEntity?.position) {
-        const moveDirection = this._getWallAvoidanceDirection(this._targetEntity.position);
+        // Check if there's a clear path to the target
+        const direction = {
+          x: this._targetEntity.position.x - this.position.x,
+          y: this._targetEntity.position.y - this.position.y,
+          z: this._targetEntity.position.z - this.position.z
+        };
         
-        // Apply wall-aware movement
-        pathfindingController.move(moveDirection, this.speed * CLOSE_RANGE_SPEED_MULTIPLIER);
-        pathfindingController.face(this._targetEntity.position, this.speed * 2);
+        const hit = this.world.simulation.raycast(
+          this.position,
+          direction,
+          targetDistance,
+          {
+            filterExcludeRigidBody: this.rawRigidBody,
+          }
+        );
         
-        // Proximity-based damage check as backup for collision detection
+        // If we hit a wall (not another entity), use pathfinding even at close range
+        if (hit && !hit.hitEntity) {
+          // There's a wall between us and the target - use pathfinding
+          if (canPathfindThisTick && !this._isPathfinding) {
+            this._isPathfinding = pathfindingController.pathfind(this._targetEntity.position, this.speed * CLOSE_RANGE_SPEED_MULTIPLIER, {
+              maxFall: this.jumpHeight * 2,
+              maxJump: this.jumpHeight * 2,
+              maxOpenSetIterations: 400,
+              verticalPenalty: this.preferJumping ? 0.5 : 2,
+              pathfindAbortCallback: () => {
+                this._isPathfinding = false;
+              },
+              pathfindCompleteCallback: () => this._isPathfinding = false,
+            });
+          }
+        } else {
+          // Clear path - use direct movement
+          const moveDirection = this._getWallAvoidanceDirection(this._targetEntity.position);
+          pathfindingController.move(moveDirection, this.speed * CLOSE_RANGE_SPEED_MULTIPLIER);
+          pathfindingController.face(this._targetEntity.position, this.speed * 2);
+        }
+        
+        // Proximity-based damage check
         if (targetDistance <= 1.5 && this._targetEntity instanceof GamePlayerEntity) {
           const now = Date.now();
           const lastDamageTime = this._lastDamageTime[this._targetEntity.player.id] || 0;
