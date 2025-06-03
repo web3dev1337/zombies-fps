@@ -6,6 +6,7 @@ import RipperEntity from './enemies/RipperEntity';
 import ZombieEntity from './enemies/ZombieEntity';
 import WeaponCrateEntity from './WeaponCrateEntity';
 import WallWeaponEntity from './WallWeaponEntity';
+import GameAudioManager from './GameAudioManager';
 import type { World, Vector3Like } from 'hytopia';
 import type EnemyEntity from './EnemyEntity';
 import type { Player } from 'hytopia';
@@ -227,21 +228,26 @@ export default class GameManager {
 
     clearTimeout(this._enemySpawnTimeout);
     clearTimeout(this._waveTimeout);
+    clearTimeout(this._endGameTimeout);
+    clearInterval(this._startInterval);
 
     this.isStarted = false;
     this.unlockedIds = new Set([ 'start' ]);
     this.waveNumber = 0;
     this.waveDelay = 0;
 
+    // Force despawn all enemies to ensure cleanup
     this.world.entityManager.getEntitiesByTag('enemy').forEach(entity => {
-      const enemy = entity as EnemyEntity;
-      enemy.takeDamage(enemy.health); // triggers any UI updates when killed via takedamage
+      entity.despawn();
     });
 
     this.world.entityManager.getAllPlayerEntities().forEach(playerEntity => {
       const player = playerEntity.player;
       playerEntity.despawn();
     });
+
+    // Reset audio manager
+    GameAudioManager.reset();
 
     setTimeout(() => { // brief timeout for at least a tick to allow packet resolution.
       GameServer.instance.playerManager.getConnectedPlayers().forEach(player => {
