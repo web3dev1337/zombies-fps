@@ -286,6 +286,20 @@ export default class GamePlayerEntity extends PlayerEntity {
 
     const { input } = payload;
 
+    // Override animations when moving backwards to prevent gun rotation
+    if (input.movementY < 0 && !this.downed) { // Moving backwards
+      // Force idle animation for upper body to keep gun facing forward
+      this.playerController.walkLoopedAnimations = [ this._gun?.idleAnimation || 'idle_upper', 'walk_lower' ];
+      this.playerController.runLoopedAnimations = [ this._gun?.idleAnimation || 'idle_upper', 'run_lower' ];
+    } else if (input.movementY >= 0 && !this.downed) {
+      // Restore normal animations for forward/stationary movement
+      this.playerController.walkLoopedAnimations = [ 'walk_lower' ];
+      this.playerController.runLoopedAnimations = [ 'run_lower' ];
+      if (this._gun) {
+        this._gun.setParentAnimations();
+      }
+    }
+
     if (!this._gun) {
       return;
     }
