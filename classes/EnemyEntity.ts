@@ -140,6 +140,28 @@ export default class EnemyEntity extends Entity {
     }
   }
 
+  public override despawn() {
+    // Clean up audio instances
+    if (this._idleAudio) {
+      this._idleAudio.stop();
+      this._idleAudio.despawn();
+    }
+    if (this._damageAudio) {
+      this._damageAudio.stop();
+      this._damageAudio.despawn();
+    }
+
+    // Remove event listeners
+    this.off(EntityEvent.ENTITY_COLLISION, this._onEntityCollision);
+    this.off(EntityEvent.TICK, this._onTick);
+
+    // Clear references
+    this._targetEntity = undefined;
+    this._lastDamageTime = {};
+
+    super.despawn();
+  }
+
   /**
    * Determines whether the given hit point is a headshot by retrieving the "head"
    * node from the underlying model.
