@@ -28,6 +28,7 @@ const PATHFIND_ACCUMULATOR_THRESHOLD_MS = 3000;
 const CLOSE_RANGE = 4;      // Increased slightly to give more room for wall avoidance
 const MID_RANGE = 20;       // Increased to reduce pathfinding frequency
 const FAR_RANGE = 40;      // Keep far range the same
+const MAX_ACTIVE_RANGE = 60; // Zombies beyond this range won't update at all
 
 // Speed multipliers for different ranges
 const CLOSE_RANGE_SPEED_MULTIPLIER = 1.2;
@@ -39,8 +40,13 @@ const WALL_CHECK_DISTANCE = 1.5;  // How far to check for walls
 const WALL_AVOID_FORCE = 0.8;     // How strongly to avoid walls
 
 // Dynamic pathfinding scaling
-const MAX_PATHFINDERS_PER_TICK = 20;  // Reduced to allow more CPU for movement
+const MAX_PATHFINDERS_PER_TICK = 10;  // Further reduced for better performance
 let currentTick = 0;
+
+// Update frequency based on distance
+const CLOSE_RANGE_UPDATE_INTERVAL = 1;    // Update every tick
+const MID_RANGE_UPDATE_INTERVAL = 3;      // Update every 3 ticks
+const FAR_RANGE_UPDATE_INTERVAL = 5;      // Update every 5 ticks
 
 // Add these constants near the top with other constants
 const STUCK_CHECK_INTERVAL_MS = 1000;  // How often to check if stuck
@@ -330,9 +336,29 @@ export default class EnemyEntity extends Entity {
    * or movement calculations. It defers to dumb movements 
    */
   private _onTick = (payload: EventPayloads[EntityEvent.TICK]) => {
-    const { tickDeltaMs } = payload;
+    const { tickDeltaMs, tick } = payload;
 
     if (!this.isSpawned || !this.world || !this.id) {
+      return;
+    }
+
+    // Quick distance check to nearest player for culling
+    const nearestPlayerDistance = this._getNearestPlayerDistance();
+    if (nearestPlayerDistance > MAX_ACTIVE_RANGE) {
+      // Skip all processing for very distant zombies
+      return;
+    }
+
+    // Determine update frequency based on distance
+    let updateInterval = CLOSE_RANGE_UPDATE_INTERVAL;
+    if (nearestPlayerDistance > FAR_RANGE) {
+      updateInterval = FAR_RANGE_UPDATE_INTERVAL;
+    } else if (nearestPlayerDistance > MID_RANGE) {
+      updateInterval = MID_RANGE_UPDATE_INTERVAL;
+    }
+
+    // Skip processing based on update interval
+    if (tick % updateInterval !== 0) {
       return;
     }
 
@@ -474,6 +500,24 @@ export default class EnemyEntity extends Entity {
     });
 
     return nearestTarget;
+  }
+
+  private _getNearestPlayerDistance(): number {
+    if (!this.world) {
+      return Infinity;
+    }
+
+    let nearestDistance = Infinity;
+    const players = this.world.entityManager.getAllPlayerEntities();
+
+    players.forEach(player => {
+      const distance = this._getTargetDistance(player);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+      }
+    });
+
+    return nearestDistance;
   }
 
   private _getTargetDistance(target: Entity) {
