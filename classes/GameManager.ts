@@ -13,7 +13,7 @@ import type { Player } from 'hytopia';
 
 const GAME_WAVE_INTERVAL_MS = 30 * 1000; // 30 seconds between waves
 const SLOWEST_SPAWN_INTERVAL_MS = 2600; // 2.6 seconds between zombies (30% slower)
-const FASTEST_SPAWN_INTERVAL_MS = 143; // Increased minimum interval by 30%
+const FASTEST_SPAWN_INTERVAL_MS = 200; // Increased minimum interval for performance
 const GAME_START_COUNTDOWN_S = 25; // 5 seconds delay before game starts
 const WAVE_SPAWN_INTERVAL_REDUCTION_MS = 200; // Slower early scaling
 const WAVE_DELAY_MS = 10000; // 8s between waves
@@ -21,7 +21,7 @@ const BASE_PLAYER_COUNT = 3; // Assuming a default BASE_PLAYER_COUNT
 const HEALTH_SCALING_PER_PLAYER = 0.1; // Assuming a default HEALTH_SCALING_PER_PLAYER
 const REWARD_SCALING_PER_PLAYER = 1.0; // Assuming a default REWARD_SCALING_PER_PLAYER
 const SPAWN_RATE_SCALING_PER_PLAYER = 0.05; // Assuming a default SPAWN_RATE_SCALING_PER_PLAYER
-const MAX_ZOMBIE_COUNT = 100; // Maximum number of zombies allowed at once
+const MAX_ZOMBIE_COUNT = 60; // Reduced max zombies for better performance
 
 export default class GameManager {
   public static readonly instance = new GameManager();

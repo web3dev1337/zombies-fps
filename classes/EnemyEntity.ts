@@ -40,20 +40,20 @@ const WALL_CHECK_DISTANCE = 1.5;  // How far to check for walls
 const WALL_AVOID_FORCE = 0.8;     // How strongly to avoid walls
 
 // Dynamic pathfinding scaling
-const MAX_PATHFINDERS_PER_TICK = 10;  // Further reduced for better performance
+const MAX_PATHFINDERS_PER_TICK = 15;  // Balanced for performance and behavior
 let currentTick = 0;
 
 // Update frequency based on distance
 const CLOSE_RANGE_UPDATE_INTERVAL = 1;    // Update every tick
-const MID_RANGE_UPDATE_INTERVAL = 3;      // Update every 3 ticks
-const FAR_RANGE_UPDATE_INTERVAL = 5;      // Update every 5 ticks
+const MID_RANGE_UPDATE_INTERVAL = 2;      // Update every 2 ticks
+const FAR_RANGE_UPDATE_INTERVAL = 4;      // Update every 4 ticks
 
 // Add these constants near the top with other constants
-const STUCK_CHECK_INTERVAL_MS = 1000;  // How often to check if stuck
-const STUCK_DISTANCE_THRESHOLD = 0.5;  // If moved less than this in check interval, consider stuck
-const STUCK_DURATION_THRESHOLD = 3000;  // How long to be "stuck" before triggering brute force
-const BRUTE_FORCE_DURATION = 2000;     // How long to apply brute force movement
-const BRUTE_FORCE_SPEED_MULTIPLIER = 1.5; // Speed boost when using brute force
+const STUCK_CHECK_INTERVAL_MS = 500;   // Check more frequently
+const STUCK_DISTANCE_THRESHOLD = 0.3;  // More sensitive to stuck detection
+const STUCK_DURATION_THRESHOLD = 1500; // Trigger brute force sooner
+const BRUTE_FORCE_DURATION = 3000;     // Longer brute force to escape
+const BRUTE_FORCE_SPEED_MULTIPLIER = 2.0; // Stronger speed boost
 
 // Add damage cooldown constant
 const DAMAGE_COOLDOWN_MS = 1000; // 1 second between damage applications
@@ -357,8 +357,10 @@ export default class EnemyEntity extends Entity {
       updateInterval = MID_RANGE_UPDATE_INTERVAL;
     }
 
-    // Skip processing based on update interval
+    // Skip processing based on update interval (but always check if stuck)
     if (tick % updateInterval !== 0) {
+      // Still check if stuck even on skipped ticks
+      this._checkIfStuck(tickDeltaMs * updateInterval);
       return;
     }
 
@@ -398,8 +400,17 @@ export default class EnemyEntity extends Entity {
         z: this._targetEntity.position.z - this.position.z
       };
       
+      // Add some randomness to help escape corners
+      bruteForceDirection.x += (Math.random() - 0.5) * 0.5;
+      bruteForceDirection.z += (Math.random() - 0.5) * 0.5;
+      
       pathfindingController.move(bruteForceDirection, this.speed * BRUTE_FORCE_SPEED_MULTIPLIER);
       pathfindingController.face(this._targetEntity.position, this.speed * 2);
+      
+      // Also try jumping if stuck
+      if (this.jumpHeight > 0) {
+        pathfindingController.jump();
+      }
 
       // Check if brute force duration has expired
       if (Date.now() - this._bruteForceStartTime > BRUTE_FORCE_DURATION) {
