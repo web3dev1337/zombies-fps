@@ -21,6 +21,8 @@ const HEALTH_SCALING_PER_PLAYER = 0.1; // Assuming a default HEALTH_SCALING_PER_
 const REWARD_SCALING_PER_PLAYER = 1.0; // Assuming a default REWARD_SCALING_PER_PLAYER
 const SPAWN_RATE_SCALING_PER_PLAYER = 0.05; // Assuming a default SPAWN_RATE_SCALING_PER_PLAYER
 const MAX_ZOMBIE_COUNT = 100; // Maximum number of zombies allowed at once
+const LATE_WAVE_SLOWDOWN_START = 10; // wave after which spawning slows
+const LATE_WAVE_SLOWDOWN_FACTOR = 0.1; // 10% slower per wave after start
 
 export default class GameManager {
   public static readonly instance = new GameManager();
@@ -344,6 +346,13 @@ export default class GameManager {
     
     // Apply player count scaling to spawn interval
     spawnInterval = Math.max(FASTEST_SPAWN_INTERVAL_MS, spawnInterval / spawnRateMultiplier);
+
+    // Slow down spawning in later waves
+    if (this.waveNumber > LATE_WAVE_SLOWDOWN_START) {
+        const extraWaves = this.waveNumber - LATE_WAVE_SLOWDOWN_START;
+        const slowdownMultiplier = 1 + (extraWaves * LATE_WAVE_SLOWDOWN_FACTOR);
+        spawnInterval = Math.min(SLOWEST_SPAWN_INTERVAL_MS, spawnInterval * slowdownMultiplier);
+    }
     
     const nextSpawn = spawnInterval + this.waveDelay;
 
