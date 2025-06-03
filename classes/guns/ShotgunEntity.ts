@@ -40,8 +40,10 @@ export default class ShotgunEntity extends GunEntity {
     // shoot the bullet
     super.shoot();
 
-    // cancel the input, pistols require click to shoot
-    parentPlayerEntity.player.input.ml = false;
+    // cancel the input, shotguns require click to shoot
+    if (parentPlayerEntity.player.input && 'ml' in parentPlayerEntity.player.input) {
+      (parentPlayerEntity.player.input as any).ml = false;
+    }
   }
 
   public override getMuzzleFlashPositionRotation(): { position: Vector3Like, rotation: QuaternionLike } {

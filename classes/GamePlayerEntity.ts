@@ -2,6 +2,7 @@ import {
   Audio,
   BaseEntityControllerEvent,
   CollisionGroup,
+  DefaultPlayerEntityController,
   Light,
   LightType,
   Player,
@@ -77,15 +78,15 @@ export default class GamePlayerEntity extends PlayerEntity {
       modelScale: 0.5,
     });
     
-    // Prevent mouse left click from being cancelled, required
-    // for auto-fire and semi-auto fire mechanics, etc.
-    this.playerController.autoCancelMouseLeftClick = false;
-    
-    // Setup player animations
-    this.playerController.idleLoopedAnimations = [ 'idle_lower' ];
-    this.playerController.interactOneshotAnimations = [];
-    this.playerController.walkLoopedAnimations = ['walk_lower' ];
-    this.playerController.runLoopedAnimations = [ 'run_lower' ];
+    // Create and set controller with custom options
+    const controller = new DefaultPlayerEntityController({
+      autoCancelMouseLeftClick: false, // Prevent mouse left click from being cancelled
+      idleLoopedAnimations: [ 'idle_lower' ],
+      interactOneshotAnimations: [],
+      walkLoopedAnimations: ['walk_lower' ],
+      runLoopedAnimations: [ 'run_lower' ],
+    });
+    this.setController(controller);
 
     this.playerController.on(BaseEntityControllerEvent.TICK_WITH_PLAYER_INPUT, this._onTickWithPlayerInput);
     
