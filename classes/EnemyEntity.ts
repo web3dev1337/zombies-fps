@@ -256,7 +256,16 @@ export default class EnemyEntity extends Entity {
       // Send appropriate UI notification
       console.log('takeDamage UI check:', { fromPlayer: !!fromPlayer, hitPoint: !!hitPoint, hitPointValue: hitPoint });
       
-      if (fromPlayer && hitPoint) {
+      if (fromPlayer) {
+        // Use hit point if available, otherwise use enemy position
+        const displayPosition = hitPoint || {
+          x: this.position.x,
+          y: this.position.y + 1.5, // Above enemy
+          z: this.position.z
+        };
+        
+        console.log('Using display position:', displayPosition);
+        
         // Create hit info for score calculation and display
         const hitInfo: HitInfo = {
           playerId: fromPlayer.player.id,
@@ -265,7 +274,7 @@ export default class EnemyEntity extends Entity {
           targetSpeed: this.getSpeed(),
           isHeadshot: !!isHeadshot,
           isKill: this.health <= 0,
-          hitPosition: hitPoint,
+          hitPosition: displayPosition,
           spawnOrigin: this.position
         };
         
