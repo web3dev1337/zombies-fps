@@ -11,6 +11,6 @@
   "license": "ISC",
   "dependencies": {
     "@hytopia.com/assets": "latest",
-    "hytopia": "^0.6.6"
+    "hytopia": "latest"
   }
 }
