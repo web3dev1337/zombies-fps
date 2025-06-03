@@ -279,9 +279,17 @@ export default class EnemyEntity extends Entity {
   }
 
   private _onEntityCollision = (payload: EventPayloads[EntityEvent.ENTITY_COLLISION]) => {
-    const { otherEntity, started } = payload;
+    const { otherEntity, started, ended } = payload;
 
-    if (!started || !(otherEntity instanceof GamePlayerEntity)) {
+    // Handle collision end - clean up damage tracking
+    if (ended && otherEntity instanceof GamePlayerEntity) {
+      // Optionally reset damage timer on collision end
+      // delete this._lastDamageTime[otherEntity.player.id];
+      return;
+    }
+
+    // Handle both new collisions (started=true) and ongoing collisions (started=false)
+    if (!(otherEntity instanceof GamePlayerEntity)) {
       return;
     }
 
@@ -361,6 +369,17 @@ export default class EnemyEntity extends Entity {
         // Apply wall-aware movement
         pathfindingController.move(moveDirection, this.speed * CLOSE_RANGE_SPEED_MULTIPLIER);
         pathfindingController.face(this._targetEntity.position, this.speed * 2);
+        
+        // Proximity-based damage check as backup for collision detection
+        if (targetDistance <= 1.5 && this._targetEntity instanceof GamePlayerEntity) {
+          const now = Date.now();
+          const lastDamageTime = this._lastDamageTime[this._targetEntity.player.id] || 0;
+          
+          if (now - lastDamageTime >= DAMAGE_COOLDOWN_MS) {
+            this._targetEntity.takeDamage(this.damage);
+            this._lastDamageTime[this._targetEntity.player.id] = now;
+          }
+        }
       }
       return;
     }
