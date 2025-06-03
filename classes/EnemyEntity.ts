@@ -412,18 +412,27 @@ export default class EnemyEntity extends Entity {
    * Detect the environment type (corner, enclosed, etc.)
    */
   private _detectEnvironment(): {
-    type: 'open' | 'corner' | 'enclosed' | 'edge';
+    type: 'open' | 'corner' | 'enclosed' | 'edge' | 'external_corner';
     escapeDirection?: Vector3Like;
   } {
-    if (!this.world) return { type: 'open' };
+    if (!this.world || !this._targetEntity) return { type: 'open' };
     
     // 8 directional checks
     const angles = [0, 45, 90, 135, 180, 225, 270, 315];
-    const checkDistance = 2.0;
-    const hits: boolean[] = [];
+    const checkDistance = 1.5; // Reduced for tighter detection
+    const hits: { angle: number; hit: boolean; distance?: number }[] = [];
     const freeDirections: Vector3Like[] = [];
     
-    for (const angle of angles) {
+    // Get direction to target for context
+    const toTarget = {
+      x: this._targetEntity.position.x - this.position.x,
+      y: 0,
+      z: this._targetEntity.position.z - this.position.z
+    };
+    const targetAngle = Math.atan2(toTarget.z, toTarget.x);
+    
+    for (let i = 0; i < angles.length; i++) {
+      const angle = angles[i];
       const rad = (angle * Math.PI) / 180;
       const direction = {
         x: Math.cos(rad),
@@ -442,14 +451,43 @@ export default class EnemyEntity extends Entity {
       
       // Only count hits on actual walls/blocks, not other entities
       const isWallHit = hit && (!hit.hitEntity || hit.hitEntity.tag !== 'enemy');
-      hits.push(isWallHit);
+      hits.push({ angle, hit: isWallHit, distance: hit?.distance });
       
       if (!isWallHit) {
         freeDirections.push(direction);
       }
     }
     
-    const hitCount = hits.filter(h => h).length;
+    const hitCount = hits.filter(h => h.hit).length;
+    
+    // Check for external corner pattern (2-3 adjacent hits with specific pattern)
+    if (hitCount >= 2 && hitCount <= 4) {
+      // Look for adjacent wall hits
+      for (let i = 0; i < hits.length; i++) {
+        const current = hits[i];
+        const next = hits[(i + 1) % hits.length];
+        const prev = hits[(i - 1 + hits.length) % hits.length];
+        
+        // External corner pattern: wall hit with free space on both sides
+        if (current.hit && !next.hit && !prev.hit) {
+          // This is likely an external corner
+          // Calculate escape direction perpendicular to wall
+          const wallAngle = (current.angle * Math.PI) / 180;
+          
+          // Check which perpendicular direction moves toward target
+          const perp1 = { x: -Math.sin(wallAngle), y: 0, z: Math.cos(wallAngle) };
+          const perp2 = { x: Math.sin(wallAngle), y: 0, z: -Math.cos(wallAngle) };
+          
+          const dot1 = perp1.x * toTarget.x + perp1.z * toTarget.z;
+          const dot2 = perp2.x * toTarget.x + perp2.z * toTarget.z;
+          
+          return {
+            type: 'external_corner',
+            escapeDirection: dot1 > dot2 ? perp1 : perp2
+          };
+        }
+      }
+    }
     
     // Determine environment type
     if (hitCount >= 7) {
@@ -459,7 +497,7 @@ export default class EnemyEntity extends Entity {
         escapeDirection: freeDirections[0] || { x: 0, y: 0, z: -1 }
       };
     } else if (hitCount >= 5) {
-      // In a corner - calculate escape direction
+      // In an internal corner - calculate escape direction
       if (freeDirections.length > 0) {
         const escapeX = freeDirections.reduce((sum, dir) => sum + dir.x, 0);
         const escapeZ = freeDirections.reduce((sum, dir) => sum + dir.z, 0);
@@ -620,14 +658,29 @@ export default class EnemyEntity extends Entity {
     }
     
     // Handle corner/enclosed environments with priority
-    if ((this._currentEnvironment.type === 'corner' || this._currentEnvironment.type === 'enclosed') && 
+    if ((this._currentEnvironment.type === 'corner' || 
+         this._currentEnvironment.type === 'enclosed' ||
+         this._currentEnvironment.type === 'external_corner') && 
         this._currentEnvironment.escapeDirection) {
       // Move in escape direction at increased speed
       pathfindingController.move(
         this._currentEnvironment.escapeDirection, 
-        this.speed * 1.3 // Boost speed to escape corners
+        this.speed * 1.5 // Higher boost for external corners
       );
-      pathfindingController.face(this._targetEntity.position, this.speed);
+      
+      // For external corners, don't face target directly as it causes conflict
+      if (this._currentEnvironment.type === 'external_corner') {
+        // Face in movement direction instead
+        const moveDir = this._currentEnvironment.escapeDirection;
+        const futurePos = {
+          x: this.position.x + moveDir.x,
+          y: this.position.y,
+          z: this.position.z + moveDir.z
+        };
+        pathfindingController.face(futurePos, this.speed * 2);
+      } else {
+        pathfindingController.face(this._targetEntity.position, this.speed);
+      }
       return;
     }
 
@@ -789,9 +842,9 @@ export default class EnemyEntity extends Entity {
   }
 
   /**
-   * Calculate a movement direction that avoids walls
+   * Calculate a movement direction that avoids walls using proper wall sliding
    * @param targetPosition The position we're trying to reach
-   * @returns Modified position that avoids walls
+   * @returns Movement direction that avoids walls
    */
   private _getWallAvoidanceDirection(targetPosition: Vector3Like): Vector3Like {
     if (!this.world) return targetPosition;
@@ -805,7 +858,7 @@ export default class EnemyEntity extends Entity {
 
     // Normalize direction
     const distance = Math.sqrt(directionToTarget.x * directionToTarget.x + directionToTarget.z * directionToTarget.z);
-    if (distance === 0) return targetPosition;
+    if (distance === 0) return { x: 0, y: 0, z: 0 };
 
     const normalizedDirection = {
       x: directionToTarget.x / distance,
@@ -813,52 +866,80 @@ export default class EnemyEntity extends Entity {
       z: directionToTarget.z / distance
     };
 
-    // Check for walls ahead and to the sides
+    // Cast ray slightly ahead to detect walls early
+    const checkDistance = WALL_CHECK_DISTANCE * 1.5; // Increased for better detection
     const frontWallHit = this.world.simulation.raycast(
       this.position,
       normalizedDirection,
-      WALL_CHECK_DISTANCE
+      checkDistance,
+      {
+        filterExcludeRigidBody: this.rawRigidBody,
+      }
     );
 
-    const rightWallHit = this.world.simulation.raycast(
+    // If no wall ahead, move directly toward target
+    if (!frontWallHit || (frontWallHit.hitEntity && frontWallHit.hitEntity.tag === 'enemy')) {
+      return normalizedDirection;
+    }
+
+    // Wall detected - calculate slide direction along wall
+    const wallNormal = frontWallHit.normal || { x: -normalizedDirection.x, y: 0, z: -normalizedDirection.z };
+    
+    // Calculate tangent vectors (perpendicular to wall normal)
+    const tangent1 = { x: -wallNormal.z, y: 0, z: wallNormal.x };
+    const tangent2 = { x: wallNormal.z, y: 0, z: -wallNormal.x };
+    
+    // Calculate which tangent moves us closer to the target
+    const toTarget = {
+      x: targetPosition.x - this.position.x,
+      y: 0,
+      z: targetPosition.z - this.position.z
+    };
+    
+    const dot1 = tangent1.x * toTarget.x + tangent1.z * toTarget.z;
+    const dot2 = tangent2.x * toTarget.x + tangent2.z * toTarget.z;
+    
+    // Choose the tangent that moves toward target
+    const slideTangent = dot1 > dot2 ? tangent1 : tangent2;
+    
+    // Check if the slide direction is also blocked
+    const slideCheckDistance = WALL_CHECK_DISTANCE;
+    const slideWallHit = this.world.simulation.raycast(
       this.position,
-      { x: normalizedDirection.z, y: 0, z: -normalizedDirection.x },
-      WALL_CHECK_DISTANCE
+      slideTangent,
+      slideCheckDistance,
+      {
+        filterExcludeRigidBody: this.rawRigidBody,
+      }
     );
-
-    const leftWallHit = this.world.simulation.raycast(
-      this.position,
-      { x: -normalizedDirection.z, y: 0, z: normalizedDirection.x },
-      WALL_CHECK_DISTANCE
-    );
-
-    // Calculate avoidance direction
-    let avoidanceX = 0;
-    let avoidanceZ = 0;
-
-    if (frontWallHit) {
-      // Strong avoidance for frontal walls
-      avoidanceX -= normalizedDirection.x * WALL_AVOID_FORCE;
-      avoidanceZ -= normalizedDirection.z * WALL_AVOID_FORCE;
+    
+    if (slideWallHit && (!slideWallHit.hitEntity || slideWallHit.hitEntity.tag !== 'enemy')) {
+      // We're in a corner - try the opposite tangent
+      const oppositeTangent = dot1 > dot2 ? tangent2 : tangent1;
+      const oppositeHit = this.world.simulation.raycast(
+        this.position,
+        oppositeTangent,
+        slideCheckDistance,
+        {
+          filterExcludeRigidBody: this.rawRigidBody,
+        }
+      );
+      
+      if (!oppositeHit || (oppositeHit.hitEntity && oppositeHit.hitEntity.tag === 'enemy')) {
+        // Can move in opposite direction
+        return oppositeTangent;
+      } else {
+        // Truly stuck in corner - back away
+        return { x: -normalizedDirection.x, y: 0, z: -normalizedDirection.z };
+      }
     }
-
-    if (rightWallHit) {
-      // Add leftward avoidance
-      avoidanceX += normalizedDirection.z * WALL_AVOID_FORCE;
-      avoidanceZ -= normalizedDirection.x * WALL_AVOID_FORCE;
-    }
-
-    if (leftWallHit) {
-      // Add rightward avoidance
-      avoidanceX -= normalizedDirection.z * WALL_AVOID_FORCE;
-      avoidanceZ += normalizedDirection.x * WALL_AVOID_FORCE;
-    }
-
-    // Combine target direction with avoidance
+    
+    // Blend slide direction with a small amount of wall normal to avoid getting too close
+    const pushAwayFactor = 0.2;
     return {
-      x: targetPosition.x + avoidanceX,
-      y: targetPosition.y,
-      z: targetPosition.z + avoidanceZ
+      x: slideTangent.x + wallNormal.x * pushAwayFactor,
+      y: 0,
+      z: slideTangent.z + wallNormal.z * pushAwayFactor
     };
   }
 
