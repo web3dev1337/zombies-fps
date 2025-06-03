@@ -17,9 +17,9 @@ import type {
 } from 'hytopia';
 
 import GamePlayerEntity from './GamePlayerEntity';
-import { SceneUIManager } from '../src/managers/scene-ui-manager';
-import { ZombieDeathEffects } from '../src/effects/ZombieDeathEffects';
-import type { HitInfo } from '../src/managers/score-manager';
+import { SceneUIManager } from './scene-ui-manager';
+import { ZombieDeathEffects } from './effects/ZombieDeathEffects';
+import type { HitInfo } from './score-manager';
 
 const RETARGET_ACCUMULATOR_THRESHOLD_MS = 5000;
 const PATHFIND_ACCUMULATOR_THRESHOLD_MS = 3000;
